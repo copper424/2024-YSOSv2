@@ -52,6 +52,10 @@ impl SerialPort {
         unsafe {
             self.modem_control.write(0x0F);
         }
+        // Enable all interrupts
+        unsafe{
+            self.offset_one.write(0x01);
+        }
     }
 
     /// Sends a byte on the serial port.
@@ -68,6 +72,12 @@ impl SerialPort {
         // FIXME: Receive a byte on the serial port no wait
         while (unsafe { self.line_status.read() } & 1) == 0 {}
         unsafe { Some(self.offset_zero.read()) }
+    }
+    
+    pub fn backspace(&mut self){
+        self.send(0x08);
+        self.send(0x20);
+        self.send(0x08);
     }
 }
 
