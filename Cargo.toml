@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "pkg/boot",
+    "pkg/exercise"
+]
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+
+[profile.release-with-debug.package."*"]
+debug = false
