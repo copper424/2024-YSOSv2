@@ -22,7 +22,7 @@ impl log::Log for Logger {
             match record.level() {
                 Level::Trace => {
                     println!(
-                        "\x1b[31m[{}]: {}@{}: {}\x1b[0m",
+                        "\x1b[31m[{}]: {}:{}: {}\x1b[0m",
                         record.level(),
                         record.file_static().unwrap(),
                         record.line().unwrap(),
@@ -31,7 +31,7 @@ impl log::Log for Logger {
                 }
                 Level::Error => {
                     println!(
-                        "\x1b[32m[{}]: {}@{}: {}\x1b[0m",
+                        "\x1b[32m[{}]: {}:{}: {}\x1b[0m",
                         record.level(),
                         record.file_static().unwrap(),
                         record.line().unwrap(),
@@ -40,7 +40,7 @@ impl log::Log for Logger {
                 }
                 Level::Warn => {
                     println!(
-                        "\x1b[33m[{}]: {}@{}: {}\x1b[0m",
+                        "\x1b[33m[{}]: {}:{}: {}\x1b[0m",
                         record.level(),
                         record.file_static().unwrap(),
                         record.line().unwrap(),
@@ -49,7 +49,7 @@ impl log::Log for Logger {
                 }
                 Level::Info => {
                     println!(
-                        "\x1b[34m[{}]: {}@{}: {}\x1b[0m",
+                        "\x1b[34m[{}]: {}:{}: {}\x1b[0m",
                         record.level(),
                         record.file_static().unwrap(),
                         record.line().unwrap(),
@@ -58,7 +58,7 @@ impl log::Log for Logger {
                 }
                 Level::Debug => {
                     println!(
-                        "\x1b[35m[{}]: {}@{}: {}\x1b[0m",
+                        "\x1b[35m[{}]: {}:{}: {}\x1b[0m",
                         record.level(),
                         record.file_static().unwrap(),
                         record.line().unwrap(),

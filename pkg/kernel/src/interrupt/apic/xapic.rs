@@ -62,8 +62,8 @@ impl LocalApic for XApic {
             const TICR: u32 = 0x380;
             // Divide configuration register for timer
             const TDCR: u32 = 0x3E0;
-            self.write(TDCR, 0b1011);
-            self.write(TICR, 0x20000);
+            self.write(TDCR, 0b1000);
+            self.write(TICR, 0x200000);
 
             // FIXME: Disable logical interrupt lines (LINT0, LINT1)
             const LINT0: u32 = 0x350;

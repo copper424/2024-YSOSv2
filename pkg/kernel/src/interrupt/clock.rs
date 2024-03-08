@@ -1,29 +1,20 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
+use crate::{memory::gdt, proc::ProcessContext};
+
 use super::consts::*;
 
 pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
-    idt[Interrupts::IrqBase as usize + Irq::Timer as usize].set_handler_fn(clock_handler);
+    idt[Interrupts::IrqBase as usize + Irq::Timer as usize]
+        .set_handler_fn(clock_handler)
+        .set_stack_index(gdt::CLOCK_IST_INDEX);
 }
 
-pub extern "x86-interrupt" fn clock_handler(_stack_frame: InterruptStackFrame) {
-    x86_64::instructions::interrupts::without_interrupts(|| {
-        if inc_counter() % 10000 == 0 {
-            info!("Tick. @{}", read_counter());
-        }
-        super::ack();
-    });
+pub extern "C" fn clock(mut context: ProcessContext) {
+    // debug!("begin to switch context\n");
+    crate::proc::switch(&mut context);
+    super::ack();
 }
 
-static mut COUNTER: AtomicU64 = AtomicU64::new(0);
-
-#[inline]
-pub fn read_counter() -> u64 {
-    unsafe { COUNTER.load(Ordering::SeqCst) }
-}
-
-#[inline]
-pub fn inc_counter() -> u64 {
-    unsafe { COUNTER.fetch_add(1, Ordering::SeqCst) }
-}
+as_handler!(clock);
