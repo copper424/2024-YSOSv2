@@ -1,5 +1,6 @@
 use core::fmt;
 
+use bitflags::bitflags;
 use x86_64::instructions::port::{
     Port, PortGeneric, PortReadOnly, PortWriteOnly, ReadOnlyAccess, ReadWriteAccess,
     WriteOnlyAccess,
@@ -15,7 +16,19 @@ pub struct SerialPort {
     modem_control: PortGeneric<u8, ReadWriteAccess>,
     line_status: PortGeneric<u8, ReadOnlyAccess>,
 }
-
+bitflags! {
+    pub struct InitVal:u8{
+        const disable_interrupts = 0x00;
+        const enable_DLAB = 0x80;
+        const divisor_lo = 0x03;
+        const divisor_hi = 0x00;
+        const no_parity = 0x03;
+        const int_fifo = 0xC7;
+        const irq_rts = 0x0B;
+        const lo_mod = 0x1E;
+        const test_chip = 0xAE;
+    }
+}
 impl SerialPort {
     pub const fn new(port: u16) -> Self {
         Self {
@@ -33,15 +46,15 @@ impl SerialPort {
     pub fn init(&mut self) {
         // FIXME: Initialize the serial port
         unsafe {
-            self.offset_one.write(0x00); // Disable all interrupts
-            self.line_control.write(0x80); // Enable DLAB (set baud rate divisor)
-            self.offset_zero.write(0x03); // Set divisor to 3 (lo byte) 38400 baud
-            self.offset_one.write(0x00); //                   (hi byte)
-            self.line_control.write(0x03); // 8 bits, no parity, one stop bit
-            self.int_fifo.write(0xC7); // Enable FIFO, clear them, with 14-byte threshold
-            self.modem_control.write(0x0B); // IRQs enabled, RTS/DSR set
-            self.modem_control.write(0x1E); // Set in loopback mode, test the serial chip
-            self.offset_zero.write(0xAE); // Test serial chip (send byte 0xAE and check if serial returns same byte)
+            self.offset_one.write(InitVal::disable_interrupts.bits()); // Disable all interrupts
+            self.line_control.write(InitVal::enable_DLAB.bits()); // Enable DLAB (set baud rate divisor)
+            self.offset_zero.write(InitVal::divisor_lo.bits()); // Set divisor to 3 (lo byte) 38400 baud
+            self.offset_one.write(InitVal::divisor_hi.bits()); //                   (hi byte)
+            self.line_control.write(InitVal::no_parity.bits()); // 8 bits, no parity, one stop bit
+            self.int_fifo.write(InitVal::int_fifo.bits()); // Enable FIFO, clear them, with 14-byte threshold
+            self.modem_control.write(InitVal::irq_rts.bits()); // IRQs enabled, RTS/DSR set
+            self.modem_control.write(InitVal::lo_mod.bits()); // Set in loopback mode, test the serial chip
+            self.offset_zero.write(InitVal::test_chip.bits()); // Test serial chip (send byte 0xAE and check if serial returns same byte)
         }
         // Check if serial is faulty (i.e: not same byte as sent)
         if unsafe { self.offset_zero.read() } != 0xAE {
