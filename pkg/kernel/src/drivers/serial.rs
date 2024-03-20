@@ -7,7 +7,7 @@ once_mutex!(pub SERIAL: SerialPort);
 pub fn init() {
     init_SERIAL(SerialPort::new(SERIAL_IO_PORT));
     get_serial_for_sure().init();
-
+    print_serial!("\x1b[1;1H\x1b[2J");
     println!("{}", crate::get_ascii_header());
     println!("[+] Serial Initialized.");
 }

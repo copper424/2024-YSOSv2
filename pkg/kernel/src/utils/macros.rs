@@ -42,6 +42,13 @@ macro_rules! once_mutex {
 }
 
 #[macro_export]
+macro_rules! print_serial {
+    ($($arg:tt)*) => {
+        $crate::utils::print_internal(format_args!($($arg)*))
+    };
+}
+
+#[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => (
         $crate::utils::print_internal(format_args!($($arg)*))
