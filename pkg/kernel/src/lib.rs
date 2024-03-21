@@ -17,9 +17,9 @@ mod drivers;
 
 use boot::BootInfo;
 
-pub fn init(_boot_info: &'static BootInfo) {
+pub fn init(boot_info: &'static BootInfo) {
     drivers::serial::init(); // init serial output
-    logger::init(); // init logger system
+    logger::init(boot_info); // init logger system
 
     info!("YatSenOS initialized.");
 }

@@ -17,6 +17,8 @@ pub struct Config<'a> {
     pub cmdline: &'a str,
     /// Load apps into memory, when no fs implemented in kernel
     pub load_apps: bool,
+    /// parse log level from string and then convert it into [`log::Level`]
+    pub log_level: log::Level,
 }
 
 const DEFAULT_CONFIG: Config = Config {
@@ -27,6 +29,7 @@ const DEFAULT_CONFIG: Config = Config {
     kernel_path: "\\KERNEL.ELF",
     cmdline: "",
     load_apps: false,
+    log_level: log::Level::Info,
 };
 
 impl<'a> Config<'a> {
@@ -65,6 +68,16 @@ impl<'a> Config<'a> {
             "kernel_stack_auto_grow" => self.kernel_stack_auto_grow = r10,
             "cmdline" => self.cmdline = value,
             "load_apps" => self.load_apps = r10 != 0,
+            "log_level" => {
+                self.log_level = match value {
+                    "trace" => log::Level::Trace,
+                    "debug" => log::Level::Debug,
+                    "info" => log::Level::Info,
+                    "warn" => log::Level::Warn,
+                    "error" => log::Level::Error,
+                    _ => log::Level::Info,
+                }
+            }
             _ => warn!("undefined config key: {}", key),
         }
     }
