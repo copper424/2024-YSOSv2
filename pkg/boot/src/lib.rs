@@ -38,6 +38,8 @@ pub struct BootInfo {
 
     /// UEFI SystemTable
     pub system_table: SystemTable<Runtime>,
+    /// output log level
+    pub log_level: log::Level,
 
     // Loaded apps
     pub loaded_apps: Option<AppList>,

@@ -1,11 +1,11 @@
 use log::{Level, Metadata, Record};
 
-pub fn init() {
+pub fn init(boot_info: &'static boot::BootInfo) {
     static LOGGER: Logger = Logger;
     log::set_logger(&LOGGER).unwrap();
 
     // FIXME: Configure the logger
-    log::set_max_level(log::LevelFilter::Info);
+    log::set_max_level(boot_info.log_level.to_level_filter());
     info!("Logger Initialized.");
 }
 
