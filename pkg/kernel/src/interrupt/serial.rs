@@ -5,7 +5,7 @@ use crate::drivers::input;
 use crate::serial::get_serial;
 
 pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
-    idt[Interrupts::IrqBase as usize + Irq::Serial0 as usize].set_handler_fn(serial_handler);
+    idt[Interrupts::IrqBase as u8 + Irq::Serial0 as u8].set_handler_fn(serial_handler);
 }
 
 pub extern "x86-interrupt" fn serial_handler(_st: InterruptStackFrame) {
