@@ -37,7 +37,7 @@ pub fn get_line() -> String {
         if val == '\n' || val == '\r'{
             break;
         }
-        if (val as u8 == 0x08 || val as u8 == 0x7F) && !line.is_empty() {
+        if (val == 0x08 as char || val == 0x7F as char) && !line.is_empty() {
             get_serial_for_sure().backspace();
             line.pop();
         } else {
