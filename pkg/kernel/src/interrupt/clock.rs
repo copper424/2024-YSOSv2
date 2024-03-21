@@ -4,7 +4,7 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 use super::consts::*;
 
 pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
-    idt[Interrupts::IrqBase as usize + Irq::Timer as usize].set_handler_fn(clock_handler);
+    idt[Interrupts::IrqBase as u8 + Irq::Timer as u8].set_handler_fn(clock_handler);
 }
 
 pub extern "x86-interrupt" fn clock_handler(_stack_frame: InterruptStackFrame) {
