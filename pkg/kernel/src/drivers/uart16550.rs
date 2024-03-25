@@ -66,7 +66,7 @@ impl SerialPort {
             self.modem_control.write(0x0F);
         }
         // Enable all interrupts
-        unsafe{
+        unsafe {
             self.offset_one.write(0x01);
         }
     }
@@ -83,11 +83,14 @@ impl SerialPort {
     /// Receives a byte on the serial port no wait.
     pub fn receive(&mut self) -> Option<u8> {
         // FIXME: Receive a byte on the serial port no wait
-        while (unsafe { self.line_status.read() } & 1) == 0 {}
-        unsafe { Some(self.offset_zero.read()) }
+        if (unsafe { self.line_status.read() } & 1) == 0 {
+            return None;
+        } else {
+            return Some(unsafe { self.offset_zero.read() });
+        }
     }
-    
-    pub fn backspace(&mut self){
+
+    pub fn backspace(&mut self) {
         self.send(0x08);
         self.send(0x20);
         self.send(0x08);
