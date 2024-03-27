@@ -27,7 +27,23 @@ impl XApic {
         self.read(0x20);
     }
 }
+bitflags! {
+    pub struct ApicReg:u32{
+        const SPIV = 0xF0;
+        const LVT_TIMER = 0x320;
+        const TICR = 0x380;
+        const TDCR = 0x3E0;
+        const LINT0 = 0x350;
+        const LINT1 = 0x360;
+        const PCINT = 0x340;
+        const ICR_0 = 0x300;
+        const ICR_1 = 0x310;
+        const TPR = 0x80;
+        const LVT_ERR = 0x370;
+        const ESR = 0x280;
 
+    }
+}
 impl LocalApic for XApic {
     /// If this type APIC is supported
     fn support() -> bool {
@@ -42,52 +58,43 @@ impl LocalApic for XApic {
     fn cpu_init(&mut self) {
         unsafe {
             // FIXME: Enable local APIC; set spurious interrupt vector.
-            const SPIV: u32 = 0xF0;
-            let mut spiv_value = self.read(SPIV);
+            let mut spiv_value = self.read(ApicReg::SPIV.bits());
             spiv_value |= 1 << 8;
             spiv_value &= !(0xFF);
             spiv_value |= Interrupts::IrqBase as u32 + Irq::Spurious as u32;
-            self.write(SPIV, spiv_value);
+            self.write(ApicReg::SPIV.bits(), spiv_value);
 
             // FIXME: The timer repeatedly counts down at bus frequency
-            const LVT_TIMER: u32 = 0x320;
-            let mut lvt_timer = self.read(LVT_TIMER);
+            let mut lvt_timer = self.read(ApicReg::LVT_TIMER.bits());
             lvt_timer &= !(0xFF);
             lvt_timer |= Interrupts::IrqBase as u32 + Irq::Timer as u32;
             lvt_timer &= !(1 << 16);
             lvt_timer |= 1 << 17;
-            self.write(LVT_TIMER, lvt_timer);
+            self.write(ApicReg::LVT_TIMER.bits(), lvt_timer);
 
-            // Initialization configuration register for timer
-            const TICR: u32 = 0x380;
-            // Divide configuration register for timer
-            const TDCR: u32 = 0x3E0;
-            self.write(TDCR, 0b1000);
-            self.write(TICR, 0x200000);
+            // Initialization configuration register for timer (TICR)
+            // Divide configuration register for timer (TDCR)
+            self.write(ApicReg::TDCR.bits(), 0b1011);
+            self.write(ApicReg::TICR.bits(), 0x20000);
 
             // FIXME: Disable logical interrupt lines (LINT0, LINT1)
-            const LINT0: u32 = 0x350;
-            const LINT1: u32 = 0x360;
-            self.write(LINT0, 1 << 16);
-            self.write(LINT1, 1 << 16);
+            self.write(ApicReg::LINT0.bits(), 1 << 16);
+            self.write(ApicReg::LINT1.bits(), 1 << 16);
 
             // FIXME: Disable performance counter overflow interrupts (PCINT)
-            const PCINT: u32 = 0x340;
-            self.write(PCINT, 1 << 16);
+            self.write(ApicReg::PCINT.bits(), 1 << 16);
 
             // FIXME: Map error interrupt to IRQ_ERROR.
-            const LVT_ERR: u32 = 0x370;
-            let mut lvt_error = self.read(LVT_ERR);
+            let mut lvt_error = self.read(ApicReg::LVT_ERR.bits());
             // ?
             lvt_error &= !(0xFF);
             lvt_error |= Interrupts::IrqBase as u32 + Irq::Error as u32;
-            self.write(LVT_ERR, lvt_error);
+            self.write(ApicReg::LVT_ERR.bits(), lvt_error);
 
             // FIXME: Clear error status register (requires back-to-back writes).
             // Error status register
-            const ESR: u32 = 0x280;
-            self.write(ESR, 0);
-            self.write(ESR, 0);
+            self.write(ApicReg::ESR.bits(), 0);
+            self.write(ApicReg::ESR.bits(), 0);
 
             // FIXME: Ack any outstanding interrupts.
             // const EOI: u32 = 0xB0;
@@ -95,19 +102,16 @@ impl LocalApic for XApic {
             self.eoi();
 
             // FIXME: Send an Init Level De-Assert to synchronise arbitration ID's.
-            const ICR_0: u32 = 0x300;
-            const ICR_1: u32 = 0x310;
-            self.write(ICR_1, 0);
+            self.write(ApicReg::ICR_1.bits(), 0);
             const BCAST_INIT: u32 = 1 << 19;
             const INIT_DE_ASSERT_MODE: u32 = 5 << 8;
             const TRIG_MODE_LEVEL: u32 = 1 << 15;
-            self.write(ICR_0, BCAST_INIT | INIT_DE_ASSERT_MODE | TRIG_MODE_LEVEL);
+            self.write(ApicReg::ICR_0.bits(), BCAST_INIT | INIT_DE_ASSERT_MODE | TRIG_MODE_LEVEL);
             const DS: u32 = 1 << 12;
-            while self.read(ICR_0) & DS != 0 {}
+            while self.read(ApicReg::ICR_0.bits()) & DS != 0 {}
 
             // FIXME: Enable interrupts on the APIC (but not on the processor).
-            const TPR: u32 = 0x80;
-            self.write(TPR, 0);
+            self.write(ApicReg::TPR.bits(), 0);
         }
 
         // NOTE: Try to use bitflags! macro to set the flags.
