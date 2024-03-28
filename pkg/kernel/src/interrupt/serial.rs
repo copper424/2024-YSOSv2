@@ -17,13 +17,13 @@ pub extern "x86-interrupt" fn serial_handler(_st: InterruptStackFrame) {
 /// Should be called on every interrupt
 fn receive() {
     // FIXME: receive character from uart 16550, put it into INPUT_BUFFER
-    let mut char_buf = [0u8; 4];
-    for idx in 0..4 {
+    let mut char_buf = alloc::vec::Vec::new();
+    loop{
         if let Some(byte) = get_serial_for_sure().receive() {
-            char_buf[idx] = byte;
-            if let Ok(key) = core::str::from_utf8(&char_buf[0..idx + 1]) {
+            char_buf.push(byte);
+            if let Ok(key) = core::str::from_utf8(&char_buf) {
                 input::push_key(key.chars().next().unwrap());
-                break;
+                char_buf.clear();
             }
         } else {
             break;
