@@ -27,7 +27,6 @@ pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
         .set_handler_fn(general_protection_fault_handler);
     idt.hv_injection_exception
         .set_handler_fn(hv_injection_exception_handler);
-    idt.invalid_opcode.set_handler_fn(invalid_opcode);
     idt.invalid_tss.set_handler_fn(invalid_tss_handler);
     idt.invalid_opcode.set_handler_fn(invalid_opcode);
     idt.machine_check.set_handler_fn(machine_check_handler);
@@ -44,6 +43,10 @@ pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
     idt.virtualization.set_handler_fn(virtualization_handler);
     idt.x87_floating_point
         .set_handler_fn(x87_floating_point_handler);
+    idt.device_not_available
+        .set_handler_fn(device_not_available_handler);
+    idt.vmm_communication_exception
+        .set_handler_fn(vmm_commumication_exception_handler);
 }
 
 pub extern "x86-interrupt" fn divide_error_handler(stack_frame: InterruptStackFrame) {
@@ -54,6 +57,9 @@ pub extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) -> ! {
+    unsafe{
+        *(0xffffff00000 as *mut u64) = 1234;
+    }
     panic!(
         "EXCEPTION: DOUBLE FAULT, ERROR_CODE: 0x{:016x}\n\n{:#?}",
         error_code, stack_frame
@@ -170,4 +176,16 @@ pub extern "x86-interrupt" fn simd_floating_point_handler(stack_frame: Interrupt
 }
 pub extern "x86-interrupt" fn virtualization_handler(stack_frame: InterruptStackFrame) {
     panic!("EXCEPTION: VIRTUALIZATION\n\n{:#?}", stack_frame);
+}
+pub extern "x86-interrupt" fn device_not_available_handler(stack_frame: InterruptStackFrame) {
+    panic!("EXCEPTION: DEVICE NOT AVAILABLE\n\n{:#?}", stack_frame);
+}
+pub extern "x86-interrupt" fn vmm_commumication_exception_handler(
+    stack_frame: InterruptStackFrame,
+    err_code: u64,
+) {
+    panic!(
+        "EXCEPTION: VMM COMMUNICATION EXCEPTION, ERROR_CODE: 0x{:016x}\n\n{:#?}",
+        err_code, stack_frame
+    );
 }
