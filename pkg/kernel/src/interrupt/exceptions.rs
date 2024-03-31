@@ -70,12 +70,16 @@ pub extern "x86-interrupt" fn page_fault_handler(
     stack_frame: InterruptStackFrame,
     err_code: PageFaultErrorCode,
 ) {
-    panic!(
-        "EXCEPTION: PAGE FAULT, ERROR_CODE: {:?}\n\nTrying to access: {:#x}\n{:#?}",
-        err_code,
-        Cr2::read().unwrap_or(VirtAddr::new_truncate(0xdeadbeef)),
-        stack_frame
-    );
+    if !crate::proc::handle_page_fault(Cr2::read().unwrap_or(VirtAddr::new_truncate(0xdeadbeef)), err_code) {
+        warn!(
+            "EXCEPTION: PAGE FAULT, ERROR_CODE: {:?}\n\nTrying to access: {:#x}\n{:#?}",
+            err_code,
+            Cr2::read().unwrap_or(VirtAddr::new_truncate(0xdeadbeef)),
+            stack_frame
+        );
+        // FIXME: print info about which process causes page fault?
+        warn!("Page fault was caused by Process #{}\n", get_process_manager().current().pid());
+    }
 }
 pub extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,

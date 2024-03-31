@@ -1,18 +1,13 @@
 use super::*;
-use crate::memory::{
-    self,
-    allocator::{ALLOCATOR, HEAP_SIZE},
-    get_frame_alloc_for_sure, PAGE_SIZE,
-};
 use alloc::{collections::*, format, sync::Arc};
-use spin::{Mutex, MutexGuard, RwLock};
-use x86::bits32::paging::Page;
+use spin::{Mutex, RwLock};
 
 pub static PROCESS_MANAGER: spin::Once<ProcessManager> = spin::Once::new();
 
 pub fn init(init: Arc<Process>) {
     // FIXME: set init process as Running
     init.write().resume();
+    // init.write().pause();
     // FIXME: set processor's current pid to init's pid
     processor::set_pid(init.pid());
     PROCESS_MANAGER.call_once(|| ProcessManager::new(init));
@@ -73,7 +68,6 @@ impl ProcessManager {
         curr_guard.save(context);
         // FIXME: push current process to ready queue if still alive
         if !curr_guard.is_dead() {
-            curr_guard.pause();
             self.push_ready(curr.pid());
         }
     }
