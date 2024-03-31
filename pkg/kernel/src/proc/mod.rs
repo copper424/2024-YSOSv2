@@ -114,7 +114,7 @@ pub fn handle_page_fault(addr: VirtAddr, err_code: PageFaultErrorCode) -> bool {
     })
 }
 
-pub fn get_pid(pid: ProcessId) -> Option<isize> {
+pub fn get_proc_exit_code(pid: ProcessId) -> Option<isize> {
     x86_64::instructions::interrupts::without_interrupts(|| {
         get_process_manager().get_proc_exit_code(pid)
     })

@@ -1,13 +1,9 @@
-use core::ops::Deref;
 
 use super::*;
 use crate::memory::*;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use spin::*;
-use x86_64::registers::debug;
-use x86_64::structures::paging::mapper::MapToError;
-use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::*;
 
 #[derive(Clone)]
