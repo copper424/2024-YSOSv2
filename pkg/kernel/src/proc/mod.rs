@@ -80,7 +80,7 @@ pub fn switch(context: &mut ProcessContext) {
 
 pub fn spawn_kernel_thread(entry: fn() -> !, name: String, data: Option<ProcessData>) -> ProcessId {
     x86_64::instructions::interrupts::without_interrupts(|| {
-        let entry = VirtAddr::new(entry as usize as u64);
+        let entry = VirtAddr::new(entry as u64);
         get_process_manager().spawn_kernel_thread(entry, name, data)
     })
 }
