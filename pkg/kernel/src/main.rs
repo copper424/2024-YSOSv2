@@ -22,6 +22,7 @@ pub fn kernel_main(boot_info: &'static boot::BootInfo) -> ! {
     loop {
         print!("[>] ");
         let line = input::get_line();
+        print!("\n");
         match line.trim() {
             "exit" => break,
             "ps" => {
