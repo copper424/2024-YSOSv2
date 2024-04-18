@@ -8,7 +8,7 @@ macro_rules! entry {
         pub extern "C" fn __impl_start() {
             let ret = $fn();
             // FIXME: after syscall, add lib::sys_exit(ret);
-            loop {}
+            crate::sys_exit(ret);
         }
     };
 }
@@ -33,5 +33,5 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     errln!("\n\n\rERROR: panicked at {}\n\n\r{}", location, msg);
 
     // FIXME: after syscall, add lib::sys_exit(1);
-    loop {}
+    crate::sys_exit(1)
 }

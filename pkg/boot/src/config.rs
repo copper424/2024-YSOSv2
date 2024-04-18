@@ -18,7 +18,6 @@ pub struct Config<'a> {
     /// Load apps into memory, when no fs implemented in kernel
     pub load_apps: bool,
 }
-
 const DEFAULT_CONFIG: Config = Config {
     kernel_stack_address: 0xFFFF_FF01_0000_0000,
     kernel_stack_auto_grow: 0,

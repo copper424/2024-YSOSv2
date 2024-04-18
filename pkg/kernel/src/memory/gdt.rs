@@ -6,9 +6,9 @@ use x86_64::VirtAddr;
 
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 pub const PAGE_FAULT_IST_INDEX: u16 = 1;
-pub const CLOCK_IST_INDEX:u16 = 2;
-
-pub const IST_SIZES: [usize; 4] = [0x1000, 0x1000, 0x1000,0x1000];
+pub const CLOCK_IST_INDEX: u16 = 2;
+pub const SYSCALL_IST_INDEX: u16 = 3;
+pub const IST_SIZES: [usize; 5] = [0x1000, 0x1000, 0x1000, 0x1000, 0x1000];
 
 lazy_static! {
     static ref TSS: TaskStateSegment = {
@@ -67,22 +67,40 @@ lazy_static! {
             );
             stack_end
         };
+        tss.interrupt_stack_table[SYSCALL_IST_INDEX as usize] = {
+            const STACK_SIZE: usize = IST_SIZES[4];
+            static mut STACK: [u8;STACK_SIZE] = [0;STACK_SIZE];
+            let stack_start = VirtAddr::from_ptr(unsafe { STACK.as_ptr() });
+            let stack_end = stack_start + STACK_SIZE as u64;
+            info!(
+                "System Call Stack for Interruption : 0x{:016x}-0x{:016x}",
+                stack_start.as_u64(),
+                stack_end.as_u64()
+            );
+            stack_end
+        };
         tss
     };
 }
 
 lazy_static! {
-    static ref GDT: (GlobalDescriptorTable, KernelSelectors) = {
+    static ref GDT: (GlobalDescriptorTable, KernelSelectors, UserSelectors) = {
         let mut gdt = GlobalDescriptorTable::new();
         let code_selector = gdt.append(Descriptor::kernel_code_segment());
         let data_selector = gdt.append(Descriptor::kernel_data_segment());
         let tss_selector = gdt.append(Descriptor::tss_segment(&TSS));
+        let user_code_selector = gdt.append(Descriptor::user_code_segment());
+        let user_data_selector = gdt.append(Descriptor::user_data_segment());
         (
             gdt,
             KernelSelectors {
                 code_selector,
                 data_selector,
                 tss_selector,
+            },
+            UserSelectors {
+                code_selector: user_code_selector,
+                data_selector: user_data_selector,
             },
         )
     };
@@ -94,7 +112,11 @@ pub struct KernelSelectors {
     pub data_selector: SegmentSelector,
     tss_selector: SegmentSelector,
 }
-
+#[derive(Clone, Copy, Debug)]
+pub struct UserSelectors {
+    pub code_selector: SegmentSelector,
+    pub data_selector: SegmentSelector,
+}
 pub fn init() {
     use x86_64::instructions::segmentation::{CS, DS, ES, FS, GS, SS};
     use x86_64::instructions::tables::load_tss;
@@ -125,4 +147,8 @@ pub fn init() {
 
 pub fn get_selector() -> &'static KernelSelectors {
     &GDT.1
+}
+
+pub fn get_user_selector() -> &'static UserSelectors {
+    &GDT.2
 }

@@ -1,9 +1,9 @@
 
 use super::*;
 use crate::memory::*;
-use alloc::sync::{Arc, Weak};
-use alloc::vec::Vec;
+use alloc::sync::Weak;
 use spin::*;
+use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::*;
 
 #[derive(Clone)]
@@ -97,12 +97,14 @@ impl Process {
         // debug!("page mapper status:{:#?}", page_mapper);
 
         let frame_allocator = &mut *get_frame_alloc_for_sure();
+        debug!("Allocating initial stack for process {}", self.pid);
         // only allocate one page for the initial stack
         match elf::map_range(
             init_stack_low,
             STACK_DEF_PAGE,
             &mut page_mapper,
             frame_allocator,
+            true,
         ) {
             Ok(res) => {
                 debug!("Allocated initial stack: {:?}", res);
@@ -195,13 +197,7 @@ impl ProcessInner {
     }
     pub fn proc_page_fault_handler(&mut self, addr: VirtAddr) {
         let addr_at_page = Page::<Size4KiB>::containing_address(addr);
-        let stack_segment = self
-            .proc_data
-            .as_ref()
-            .unwrap()
-            .stack_segment
-            .as_ref()
-            .unwrap();
+        let stack_segment = self.proc_data.as_ref().unwrap().stack_segment.unwrap();
         let start_page = stack_segment.start;
         let alloc_page_nums = start_page - addr_at_page;
         let original_page_size = stack_segment.end - start_page;
@@ -213,11 +209,13 @@ impl ProcessInner {
             .mapper();
 
         let frame_allocator = &mut *get_frame_alloc_for_sure();
+        let user_access = processor::get_pid() != KERNEL_PID;
         match elf::map_range(
             addr_at_page.start_address().as_u64(),
             alloc_page_nums,
             &mut page_table_mapper,
             frame_allocator,
+            user_access,
         ) {
             Ok(res) => {
                 debug!("Allocated stack for page fault exception: {:?}", res);
@@ -228,6 +226,59 @@ impl ProcessInner {
         }
         let size = original_page_size + alloc_page_nums;
         self.set_stack(addr_at_page.start_address(), size);
+        self.proc_data.as_mut().unwrap().stack_pages = size as usize;
+    }
+
+    pub fn load_elf(&mut self, elf: &ElfFile) {
+        let frame_allocator = &mut *get_frame_alloc_for_sure();
+        let mut page_table_mapper = self
+            .page_table
+            .as_ref()
+            .expect("page table did not exist!\n")
+            .mapper();
+        // map elf segments to new frames
+        if let Err(e) = elf::load_elf(
+            elf,
+            PHYSICAL_OFFSET.get().cloned().unwrap(),
+            &mut page_table_mapper,
+            frame_allocator,
+            true,
+        ) {
+            debug!("Failed to load ELF: {:?}", e);
+        }
+        // map and allocate stack
+        if let Err(e) = elf::map_range(
+            STACK_INIT_BOT,
+            STACK_DEF_PAGE,
+            &mut page_table_mapper,
+            frame_allocator,
+            true,
+        ) {
+            debug!("Failed to map stack: {:?}", e);
+        }
+        const STACK_INIT_END: u64 = STACK_INIT_BOT + STACK_DEF_SIZE;
+        let stack_segment = PageRange {
+            start: Page::containing_address(VirtAddr::new(STACK_INIT_BOT)),
+            end: Page::containing_address(VirtAddr::new(STACK_INIT_END)),
+        };
+        let code_segment: Vec<PageRange> = elf
+            .program_iter()
+            .filter(|p| p.get_type().unwrap() == elf::program::Type::Load)
+            .map(|segment_header| {
+                let start = Page::containing_address(VirtAddr::new(segment_header.virtual_addr()));
+                let end = Page::containing_address(VirtAddr::new(
+                    segment_header.virtual_addr() + segment_header.mem_size(),
+                ));
+                PageRange { start, end }
+            })
+            .collect();
+        self.proc_data.as_mut().unwrap().stack_pages = stack_segment.count();
+        self.proc_data.as_mut().unwrap().code_pages = code_segment
+            .iter()
+            .map(|code_segment| code_segment.count())
+            .sum();
+        self.proc_data.as_mut().unwrap().stack_segment = Some(stack_segment);
+        self.proc_data.as_mut().unwrap().code_segment = Some(code_segment);
     }
 }
 

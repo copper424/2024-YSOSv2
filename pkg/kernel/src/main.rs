@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use ysos::*;
+use ysos::{proc::{waitpid, KERNEL_PID}, *};
 use ysos_kernel as ysos;
 
 extern crate alloc;
@@ -19,5 +19,7 @@ pub fn spawn_init() -> proc::ProcessId {
     // print_serial!("\x1b[1;1H\x1b[2J");
 
     proc::list_app();
-    proc::spawn("sh").unwrap()
+    // proc::spawn("hello").unwrap();
+    proc::spawn("factorial").unwrap();
+    KERNEL_PID
 }

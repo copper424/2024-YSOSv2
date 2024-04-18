@@ -1,9 +1,11 @@
-use alloc::{collections::BTreeMap, sync::Arc};
+use alloc::collections::BTreeMap;
 use spin::RwLock;
 use x86_64::structures::paging::{
     page::PageRange,
     Page,
 };
+
+use crate::resource::StdIO;
 
 use super::*;
 
@@ -11,16 +13,29 @@ use super::*;
 pub struct ProcessData {
     // shared data
     pub(super) env: Arc<RwLock<BTreeMap<String, String>>>,
-
+    pub(super) file_handles: Arc<RwLock<BTreeMap<u8, Resource>>>,
     // process specific data
-    pub(super) stack_segment: Option<PageRange>
+    pub(super) stack_segment: Option<PageRange>,
+    pub(super) code_segment: Option<Vec<PageRange>>,
+    pub(super) stack_pages: usize,
+    pub(super) code_pages: usize,
 }
 
 impl Default for ProcessData {
     fn default() -> Self {
+        let mut file_handles = BTreeMap::new();
+
+        // stdin, stdout, stderr
+        file_handles.insert(0, Resource::Console(StdIO::Stdin));
+        file_handles.insert(1, Resource::Console(StdIO::Stdout));
+        file_handles.insert(2, Resource::Console(StdIO::Stderr));
         Self {
             env: Arc::new(RwLock::new(BTreeMap::new())),
-            stack_segment: None
+            file_handles: Arc::new(RwLock::new(file_handles)),
+            stack_segment: None,
+            code_segment: None,
+            stack_pages: 0,
+            code_pages: 0,
         }
     }
 }
@@ -45,7 +60,7 @@ impl ProcessData {
 
     pub fn is_on_stack(&self, addr: VirtAddr) -> bool {
         // FIXME: check if the address is on the stack
-        if let Some(segment) = self.stack_segment{
+        if let Some(segment) = self.stack_segment {
             let stack_top = segment.start.start_address();
             // debug!("stack: {:#x?} - {:#x?}\n", front, last);
             // debug!("addr: {:#x?}\n", addr);
@@ -54,5 +69,8 @@ impl ProcessData {
             }
         }
         false
+    }
+    pub fn handle(&self, fd: u8) -> Option<Resource> {
+        self.file_handles.read().get(&fd).cloned()
     }
 }

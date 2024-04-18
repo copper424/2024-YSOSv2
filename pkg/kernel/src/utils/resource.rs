@@ -19,6 +19,11 @@ impl Resource {
             Resource::Console(stdio) => match stdio {
                 &StdIO::Stdin => {
                     // FIXME: just read from kernel input buffer
+                    if let Some(key) = crate::drivers::input::try_get_key() {
+                        key.encode_utf8(buf);
+                        // a char type is always 4 bytes
+                        return Some(4);
+                    }
                     Some(0)
                 }
                 _ => None,

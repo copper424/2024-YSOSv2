@@ -81,7 +81,6 @@ def qemu(output: str = '-nographic', memory: str = '96M', debug: bool = False, i
 
     if qemu_exe is None:
         raise Exception('qemu-system-x86_64 not found in PATH')
-
     qemu_args = [qemu_exe, '-bios', args.bios, '-net', 'none', *output.split(),
                  '-m', memory, '-drive', 'format=raw,file=fat:esp','-snapshot']
 

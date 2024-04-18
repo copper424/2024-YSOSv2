@@ -1,7 +1,6 @@
 use core::alloc::Layout;
 
 use crate::proc::*;
-use crate::utils::*;
 
 use super::SyscallArgs;
 
@@ -12,7 +11,15 @@ pub fn spawn_process(args: &SyscallArgs) -> usize {
     // FIXME: spawn the process by name
     // FIXME: handle spawn error, return 0 if failed
     // FIXME: return pid as usize
-
+    let name = unsafe {
+        core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+            args.arg0 as *const u8,
+            args.arg1,
+        ))
+    };
+    if let Some(pid) = spawn(name) {
+        return pid.0 as usize;
+    }
     0
 }
 
@@ -21,22 +28,41 @@ pub fn sys_write(args: &SyscallArgs) -> usize {
     // FIXME: handle read from fd & return length
     //       - core::slice::from_raw_parts
     // FIXME: return 0 if failed
-
+    let handle_num = args.arg0 as u8;
+    if let Some(resource) = crate::proc::handle(handle_num) {
+        let buf = unsafe { core::slice::from_raw_parts(args.arg1 as *const u8, args.arg2) };
+        if let Some(len) = resource.write(buf) {
+            return len;
+        }
+    }
     0
 }
 
 pub fn sys_read(args: &SyscallArgs) -> usize {
     // FIXME: just like sys_write
-
+    let handle_num = args.arg0 as u8;
+    if let Some(resource) = crate::proc::handle(handle_num) {
+        let buf = unsafe { core::slice::from_raw_parts_mut(args.arg1 as *mut u8, args.arg2) };
+        if let Some(len) = resource.read(buf) {
+            return len;
+        }
+    }
     0
 }
 
 pub fn exit_process(args: &SyscallArgs, context: &mut ProcessContext) {
     // FIXME: exit process with retcode
+    crate::proc::exit(args.arg0 as isize, context);
 }
 
 pub fn list_process() {
     // FIXME: list all processes
+    print_process_list();
+}
+
+pub fn waitpid(args: &SyscallArgs) -> isize {
+    let pid = ProcessId(args.arg0 as u16);
+    crate::proc::waitpid(pid)
 }
 
 pub fn sys_allocate(args: &SyscallArgs) -> usize {

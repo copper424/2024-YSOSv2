@@ -3,7 +3,7 @@ pub mod clock;
 mod consts;
 mod exceptions;
 mod serial;
-
+mod syscall;
 use crate::memory::physical_to_virtual;
 use apic::*;
 use x86::cpuid::CpuId;
@@ -16,6 +16,7 @@ lazy_static! {
             exceptions::register_idt(&mut idt);
             clock::register_idt(&mut idt);
             serial::register_idt(&mut idt);
+            syscall::register_idt(&mut idt);
         }
         idt
     };

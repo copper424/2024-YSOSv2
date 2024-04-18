@@ -8,7 +8,7 @@ use core::ptr::{copy_nonoverlapping, write_bytes};
 use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::{mapper::*, *};
 use x86_64::{align_up, PhysAddr, VirtAddr};
-use xmas_elf::{program, ElfFile};
+pub use xmas_elf::{program, ElfFile};
 
 /// Map physical memory
 ///
@@ -43,6 +43,7 @@ pub fn map_range(
     count: u64,
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+    user_access: bool,
 ) -> Result<PageRange, MapToError<Size4KiB>> {
     let range_start = Page::containing_address(VirtAddr::new(addr));
     let range_end = range_start + count;
@@ -53,9 +54,12 @@ pub fn map_range(
         count
     );
 
-    // default flags for stack
-    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-
+    // default flags
+    let mut flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+    
+    if user_access {
+        flags.insert(PageTableFlags::USER_ACCESSIBLE);
+    }
     for page in Page::range(range_start, range_end) {
         let frame = frame_allocator
             .allocate_frame()
@@ -87,6 +91,7 @@ pub fn load_elf(
     physical_offset: u64,
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+    user_access: bool,
 ) -> Result<(), MapToError<Size4KiB>> {
     let file_buf = elf.input.as_ptr();
 
@@ -103,6 +108,7 @@ pub fn load_elf(
             &segment,
             page_table,
             frame_allocator,
+            user_access,
         )?
     }
 
@@ -118,6 +124,7 @@ fn load_segment(
     segment: &program::ProgramHeader,
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+    user_access: bool,
 ) -> Result<(), MapToError<Size4KiB>> {
     trace!("Loading & mapping segment: {:#x?}", segment);
 
@@ -132,15 +139,19 @@ fn load_segment(
     // unimplemented!("Handle page table flags with segment flags!");
     if segment.flags().is_write() {
         page_table_flags.insert(PageTableFlags::WRITABLE);
-    }else{
+    } else {
         page_table_flags.remove(PageTableFlags::WRITABLE);
     }
-    if !segment.flags().is_execute(){
+    if !segment.flags().is_execute() {
         page_table_flags.insert(PageTableFlags::NO_EXECUTE);
-    }else{
+    } else {
         page_table_flags.remove(PageTableFlags::NO_EXECUTE);
     }
-
+    if user_access {
+        page_table_flags.insert(PageTableFlags::USER_ACCESSIBLE);
+    } else {
+        page_table_flags.remove(PageTableFlags::USER_ACCESSIBLE);
+    }
     trace!("Segment page table flag: {:?}", page_table_flags);
 
     let start_page = Page::containing_address(virt_start_addr);

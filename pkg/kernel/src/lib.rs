@@ -33,6 +33,7 @@ pub mod proc;
 pub use alloc::format;
 use boot::BootInfo;
 
+
 pub fn init(boot_info: &'static BootInfo) {
     serial::init(); // init serial output
     logger::init(); // init logger system
@@ -41,8 +42,9 @@ pub fn init(boot_info: &'static BootInfo) {
     memory::allocator::init(); // init kernel heap allocator
     interrupt::init(); // init interrupts
     memory::init(boot_info); // init memory manager
-    proc::init();
-    
+    memory::user::init(); // init user heap
+    proc::init(boot_info);
+
     x86_64::instructions::interrupts::enable();
     info!("Interrupts Enabled.");
 
@@ -57,5 +59,15 @@ pub fn shutdown(boot_info: &'static BootInfo) -> ! {
             boot::UefiStatus::SUCCESS,
             None,
         );
+    }
+}
+
+pub fn wait(init: proc::ProcessId) {
+    loop {
+        if proc::still_alive(init) {
+            x86_64::instructions::hlt(); // Why? Check reflection question 5
+        } else {
+            break;
+        }
     }
 }

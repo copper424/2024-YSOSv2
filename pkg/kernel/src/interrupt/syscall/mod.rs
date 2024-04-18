@@ -1,12 +1,19 @@
-use crate::{memory::gdt, proc::*};
+use crate::{
+    memory::gdt::SYSCALL_IST_INDEX,
+    proc::*,
+};
 use alloc::format;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+
+use x86_64::{
+    structures::idt::{InterruptDescriptorTable, InterruptStackFrame},
+    PrivilegeLevel,
+};
 
 // NOTE: import `ysos_syscall` package as `syscall_def` in Cargo.toml
 use syscall_def::Syscall;
 
 mod service;
-use super::consts;
+
 
 // FIXME: write syscall service handler in `service.rs`
 use service::*;
@@ -15,6 +22,10 @@ pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
     // FIXME: register syscall handler to IDT
     //        - standalone syscall stack
     //        - ring 3
+    idt[super::consts::Interrupts::Syscall as u8]
+        .set_handler_fn(syscall_handler)
+        .set_stack_index(SYSCALL_IST_INDEX as u16)
+        .set_privilege_level(PrivilegeLevel::Ring3);
 }
 
 pub extern "C" fn syscall(mut context: ProcessContext) {
@@ -43,24 +54,40 @@ pub fn dispatcher(context: &mut ProcessContext) {
 
     match args.syscall {
         // fd: arg0 as u8, buf: &[u8] (ptr: arg1 as *const u8, len: arg2)
-        Syscall::Read => { /* FIXME: read from fd & return length */},
+        Syscall::Read => {
+            context.set_rax(sys_read(&args));
+        }
         // fd: arg0 as u8, buf: &[u8] (ptr: arg1 as *const u8, len: arg2)
-        Syscall::Write => { /* FIXME: write to fd & return length */},
+        Syscall::Write => {
+            context.set_rax(sys_write(&args));
+        }
 
         // None -> pid: u16
-        Syscall::GetPid => { /* FIXME: get current pid */ },
+        Syscall::GetPid => {
+            context.set_rax(crate::proc::get_pid().0 as usize);
+        }
 
         // path: &str (ptr: arg0 as *const u8, len: arg1) -> pid: u16
-        Syscall::Spawn => { /* FIXME: spawn process from name */},
+        Syscall::Spawn => {
+            context.set_rax(spawn_process(&args));
+        }
         // ret: arg0 as isize
-        Syscall::Exit => { /* FIXME: exit process with retcode */},
+        Syscall::Exit => {
+            exit_process(&args, context);
+        }
         // pid: arg0 as u16 -> status: isize
-        Syscall::WaitPid => { /* FIXME: check if the process is running or get retcode */},
+        Syscall::WaitPid => { 
+            context.set_rax(service::waitpid(&args) as usize);
+        }
 
         // None
-        Syscall::Stat => { /* FIXME: list processes */ },
+        Syscall::Stat => {
+            list_process();
+        }
         // None
-        Syscall::ListApp => { /* FIXME: list avaliable apps */},
+        Syscall::ListApp => {
+            list_app();
+        }
 
         // ----------------------------------------------------
         // NOTE: following syscall examples are implemented
