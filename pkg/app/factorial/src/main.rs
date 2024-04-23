@@ -21,8 +21,7 @@ fn main() -> isize {
     let input = lib::stdin().read_line();
 
     // prase input as u64
-    // let n = input.parse::<u64>().unwrap();
-    let n = 999999;
+    let n = input.parse::<u64>().unwrap();
 
     if n > 1000000 {
         println!("n must be less than 1000000");

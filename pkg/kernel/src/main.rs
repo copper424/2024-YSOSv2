@@ -20,6 +20,5 @@ pub fn spawn_init() -> proc::ProcessId {
 
     proc::list_app();
     // proc::spawn("hello").unwrap();
-    proc::spawn("factorial").unwrap();
-    KERNEL_PID
+    proc::spawn("factorial").unwrap()
 }
