@@ -1,7 +1,4 @@
-use crate::{
-    memory::gdt::SYSCALL_IST_INDEX,
-    proc::*,
-};
+use crate::{memory::gdt::SYSCALL_IST_INDEX, proc::*};
 use alloc::format;
 
 use x86_64::{
@@ -13,7 +10,6 @@ use x86_64::{
 use syscall_def::Syscall;
 
 mod service;
-
 
 // FIXME: write syscall service handler in `service.rs`
 use service::*;
@@ -76,8 +72,12 @@ pub fn dispatcher(context: &mut ProcessContext) {
             exit_process(&args, context);
         }
         // pid: arg0 as u16 -> status: isize
-        Syscall::WaitPid => { 
+        Syscall::WaitPid => {
             context.set_rax(service::waitpid(&args) as usize);
+        }
+        // pid: arg0 as u16
+        Syscall::Kill => {
+            sys_kill(&args, context);
         }
 
         // None

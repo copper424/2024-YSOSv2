@@ -25,16 +25,29 @@ impl Stdin {
                     .next()
                     .unwrap();
                 // FIXME: handle backspace / enter...
-                if ch == 0x08 as char {
-                    if !buf.is_empty() {
-                        buf.pop();
+                match ch {
+                    '\n' | '\r' => {
+                        sys_write(1, &char_buf);
+                        break;
                     }
-                } else if ch == 0x0A as char || ch == 0x0D as char {
-                    break;
-                } else {
-                    buf.push(ch);
-                    // echo the input character
-                    sys_write(1, &char_buf);
+                    '\x04' => {
+                        buf.clear();
+                        buf.push(ch);
+                        break;
+                    }
+                    '\x08' | '\x7F' => {
+                        if !buf.is_empty() {
+                            io::print!("\x08\x20\x08");
+                            buf.pop();
+                        }
+                    }
+                    // ignore other control character
+                    '\x00'..='\x1F' => {}
+                    c => {
+                        buf.push(ch);
+                        // echo the input character
+                        io::print!("{}", c);
+                    }
                 }
             } else {
                 // len == 0

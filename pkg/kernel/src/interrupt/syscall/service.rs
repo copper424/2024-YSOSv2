@@ -97,3 +97,9 @@ pub fn sys_deallocate(args: &SyscallArgs) {
             .deallocate(core::ptr::NonNull::new_unchecked(ptr), *layout);
     }
 }
+
+pub fn sys_kill(args: &SyscallArgs, context: &mut ProcessContext) {
+    // kill process according to the given PID
+    let pid = ProcessId(args.arg0 as u16);
+    crate::proc::kill(pid, context);
+}

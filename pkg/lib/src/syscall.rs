@@ -34,9 +34,9 @@ pub fn sys_read(fd: u8, buf: &mut [u8]) -> Option<usize> {
 pub fn sys_wait_pid(pid: u16) -> isize {
     // FIXME: try to get the return value for process
     //        loop & halt until the process is finished
-    loop{
+    loop {
         let ret = syscall!(Syscall::WaitPid, pid as usize) as isize;
-        if ret >= 0  {
+        if ret >= 0 {
             return ret;
         }
     }
@@ -83,3 +83,7 @@ pub fn sys_print_process_list() {
     syscall!(Syscall::Stat);
 }
 
+#[inline(always)]
+pub fn sys_kill(pid: u16) {
+    syscall!(Syscall::Kill, pid);
+}

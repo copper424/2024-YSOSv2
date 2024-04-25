@@ -34,10 +34,10 @@ pub fn get_line() -> String {
     let mut line = String::with_capacity(BUFFER_SIZE);
     loop {
         let val = pop_key();
-        if val == '\n' || val == '\r'{
+        if val == '\n' || val == '\r' {
             break;
         }
-        if (val as u8 == 0x08 || val as u8 == 0x7F) && !line.is_empty() {
+        if (val == '\x08' || val == '\x7F') && !line.is_empty() {
             get_serial_for_sure().backspace();
             line.pop();
         } else {

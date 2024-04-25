@@ -177,7 +177,7 @@ pub fn handle(fd: u8) -> Option<Resource> {
 pub fn exit(ret: isize, context: &mut ProcessContext) {
     x86_64::instructions::interrupts::without_interrupts(|| {
         let manager = get_process_manager();
-        manager.kill_self(ret); // FIXME: implement this for ProcessManager
+        manager.kill_current(ret); // FIXME: implement this for ProcessManager
         manager.switch_next(context);
     })
 }
@@ -191,7 +191,17 @@ pub fn still_alive(pid: ProcessId) -> bool {
 }
 
 pub fn waitpid(pid: ProcessId) -> isize {
+    x86_64::instructions::interrupts::without_interrupts(|| get_process_manager().waitpid(pid))
+}
+
+pub fn kill(pid: ProcessId, context: &mut ProcessContext) {
     x86_64::instructions::interrupts::without_interrupts(|| {
-        get_process_manager().waitpid(pid)
+        let manager = get_process_manager();
+        if pid == processor::get_pid() {
+            manager.kill_current(-1);
+            manager.switch_next(context);
+        } else {
+            manager.kill(pid, -1);
+        }
     })
 }

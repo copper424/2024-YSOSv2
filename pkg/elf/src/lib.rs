@@ -56,7 +56,7 @@ pub fn map_range(
 
     // default flags
     let mut flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-    
+
     if user_access {
         flags.insert(PageTableFlags::USER_ACCESSIBLE);
     }
@@ -83,6 +83,46 @@ pub fn map_range(
     Ok(Page::range(range_start, range_end))
 }
 
+/// Unmap a range of memory
+///
+/// unmap frames and deallocate if needed
+pub fn unmap_range(
+    addr: u64,
+    count: u64,
+    page_table: &mut impl Mapper<Size4KiB>,
+    frame_deallocator: &mut impl FrameDeallocator<Size4KiB>,
+    deallocate_flag: bool,
+) -> Result<(), UnmapError> {
+    let range_start = Page::containing_address(VirtAddr::new(addr));
+    let range_end = range_start + count;
+    trace!("Unmapping a range of memory");
+
+    trace!(
+        "Page Range: {:?}({})",
+        Page::range(range_start, range_end),
+        count
+    );
+    trace!(
+        "Map hint: {:#x} -> {:#x}",
+        addr,
+        page_table
+            .translate_page(range_start)
+            .unwrap()
+            .start_address()
+    );
+
+    for page in Page::range(range_start, range_end) {
+        let (frame, changed_page) = page_table.unmap(page)?;
+        unsafe {
+            if deallocate_flag {
+                frame_deallocator.deallocate_frame(frame);
+            }
+        }
+        changed_page.flush();
+    }
+
+    Ok(())
+}
 /// Load & Map ELF file
 ///
 /// load segments in ELF file to new frames and set page table

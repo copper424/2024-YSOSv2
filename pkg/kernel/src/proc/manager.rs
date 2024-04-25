@@ -224,9 +224,6 @@ impl ProcessManager {
         self.push_ready(pid);
         pid
     }
-    pub fn kill_self(&self, ret: isize) {
-        self.kill(processor::get_pid(), ret);
-    }
 
     pub fn get_proc_status(&self, pid: ProcessId) -> ProgramStatus {
         if let Some(proc) = self.get_proc(&pid) {
