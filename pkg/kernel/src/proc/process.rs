@@ -1,6 +1,5 @@
-
 use super::*;
-use crate::memory::*;
+use crate::memory::{self, *};
 use alloc::sync::Weak;
 use spin::*;
 use x86_64::structures::paging::page::PageRange;
@@ -333,14 +332,25 @@ impl core::fmt::Debug for Process {
 impl core::fmt::Display for Process {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         let inner = self.inner.read();
+        let (memory_usage, memory_unit) = inner
+            .proc_data
+            .as_ref()
+            .map(|d| {
+                let total_pages = d.stack_pages + d.code_pages;
+                let total_size = total_pages as u64 * PAGE_SIZE;
+                memory::humanized_size(total_size)
+            })
+            .unwrap_or((0f64, "B"));
         write!(
             f,
-            " #{:-3} | #{:-3} | {:12} | {:7} | {:?}",
+            " #{:-3} | #{:-3} | {:12} | {:7} | {:?} | {:<} {}",
             self.pid.0,
             inner.parent().map(|p| p.pid.0).unwrap_or(0),
             inner.name,
             inner.ticks_passed,
-            inner.status
+            inner.status,
+            memory_usage,
+            memory_unit,
         )?;
         Ok(())
     }

@@ -47,7 +47,10 @@ fn main() -> isize {
                     continue;
                 }
                 match line_arr[1].parse::<u16>() {
-                    Ok(pid) => lib::sys_kill(pid),
+                    Ok(pid) => {
+                        lib::sys_kill(pid);
+                        print!("\n");
+                    }
                     Err(e) => println!("failed to parse PID:{}", e),
                 }
             }
