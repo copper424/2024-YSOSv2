@@ -35,24 +35,13 @@ fn main() -> isize {
                 lib::sys_list_app();
             }
             "exec" => {
-                if line_arr.len() != 2 {
-                    println!("cannot find the app name for execution. Usage: exec <app name>");
-                    continue;
-                }
-                lib::sys_spawn(line_arr[1]);
+                proc::spawn(&line_arr);
+            }
+            "nohup" => {
+                proc::nohup(&line_arr);
             }
             "kill" => {
-                if line_arr.len() != 2 {
-                    println!("The PID of the process to be killed is not found. Usage: kill <PID>");
-                    continue;
-                }
-                match line_arr[1].parse::<u16>() {
-                    Ok(pid) => {
-                        lib::sys_kill(pid);
-                        print!("\n");
-                    }
-                    Err(e) => println!("failed to parse PID:{}", e),
-                }
+                proc::kill(&line_arr);
             }
             s => {
                 if s.is_empty() {
