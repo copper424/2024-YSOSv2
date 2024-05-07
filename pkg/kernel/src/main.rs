@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use ysos::{proc::{waitpid, KERNEL_PID}, *};
+use ysos::*;
 use ysos_kernel as ysos;
 
 extern crate alloc;

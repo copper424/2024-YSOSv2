@@ -18,16 +18,15 @@ impl Stdin {
         //       - maybe char by char?
         let mut char_buf = [0u8; 4];
         while let Some(len) = sys_read(0, &mut char_buf) {
-            if len == 4 {
-                let ch = core::str::from_utf8(&mut char_buf)
-                    .expect("failed to convert the u8 array into a str")
+            if len > 0 {
+                let ch = String::from_utf8_lossy(&char_buf[..len])
                     .chars()
                     .next()
                     .unwrap();
                 // FIXME: handle backspace / enter...
                 match ch {
                     '\n' | '\r' => {
-                        sys_write(1, &char_buf);
+                        stdout().write("\n");
                         break;
                     }
                     '\x04' => {
