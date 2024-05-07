@@ -13,7 +13,7 @@ const STUDENT_ID: &str = "12345";
 fn main() -> isize {
     println!("YatSen OS Volume2 Shell");
     println!("Author:{} Student ID:{}", NAME, STUDENT_ID);
-    println!("\tNote: You can input \'help\' to get builtin command usage");
+    println!("Note: You can input \'help\' to get builtin command usage");
 
     loop {
         print!("$ ");
