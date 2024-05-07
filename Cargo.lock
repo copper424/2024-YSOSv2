@@ -407,6 +407,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ysos_heap_alloc"
+version = "0.1.0"
+dependencies = [
+ "yslib",
+]
+
+[[package]]
 name = "ysos_hello"
 version = "0.1.0"
 dependencies = [
