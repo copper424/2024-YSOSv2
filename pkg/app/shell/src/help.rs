@@ -10,6 +10,7 @@ pub fn print_help_infomation() {
     println!("\tls-app: list all available apps");
     println!("\tps: show process list");
     println!("\texec: execute given app");
+    println!("\tnohup: execute given app in the background");
     println!("\tkill: kill process referring to PID");
     println!("\texit: exit shell");
 }
