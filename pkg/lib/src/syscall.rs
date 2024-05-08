@@ -1,3 +1,5 @@
+use core::time::Duration;
+
 use syscall_def::Syscall;
 
 #[inline(always)]
@@ -86,4 +88,18 @@ pub fn sys_print_process_list() {
 #[inline(always)]
 pub fn sys_kill(pid: u16) {
     syscall!(Syscall::Kill, pid);
+}
+
+#[inline(always)]
+pub fn sys_time() -> usize {
+    syscall!(Syscall::Time) as usize
+}
+#[inline(always)]
+pub fn sleep(millisecs: i64) {
+    let start = sys_time();
+    let dur = Duration::from_millis(millisecs as u64);
+    let mut current = start;
+    while current - start < dur.as_millis() as usize{
+        current = sys_time();
+    }
 }

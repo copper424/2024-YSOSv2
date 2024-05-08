@@ -11,6 +11,7 @@ use crate::proc::manager::get_process_manager;
 pub use macros::*;
 pub use regs::*;
 pub mod resource;
+pub mod uefi_runtime;
 use crate::proc::*;
 
 pub const fn get_ascii_header() -> &'static str {
