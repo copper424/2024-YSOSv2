@@ -103,3 +103,23 @@ pub fn sys_kill(args: &SyscallArgs, context: &mut ProcessContext) {
     let pid = ProcessId(args.arg0 as u16);
     crate::proc::kill(pid, context);
 }
+
+pub fn sys_time() -> usize {
+    // get current time
+    let time = crate::utils::uefi_runtime::UEFI_RUNTIME
+        .get()
+        .unwrap()
+        .lock()
+        .get_time();
+    let datetime =
+        chrono::NaiveDate::from_ymd_opt(time.year() as i32, time.month() as u32, time.day() as u32)
+            .unwrap()
+            .and_hms_nano_opt(
+                time.hour() as u32,
+                time.minute() as u32,
+                time.second() as u32,
+                time.nanosecond() as u32,
+            )
+            .unwrap();
+    datetime.and_utc().timestamp_millis() as usize
+}

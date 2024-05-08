@@ -20,3 +20,4 @@ linked_list_allocator = "0.10"
 volatile = "0.5"
 elf = { package = "ysos_elf", path = "../elf" }
 syscall_def = {package = "ysos_syscall", path = "../syscall"}
+chrono = {version = "0.4",default-features = false,features = ["alloc"]}

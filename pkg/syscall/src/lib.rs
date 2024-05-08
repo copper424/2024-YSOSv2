@@ -11,7 +11,7 @@ pub enum Syscall {
     Write = 1,
 
     GetPid = 39,
-    
+    Time = 40,
     Spawn = 59,
     Exit = 60,
     WaitPid = 61,
