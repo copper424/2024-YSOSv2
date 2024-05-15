@@ -167,7 +167,8 @@ impl ProcessManager {
     }
 
     pub fn print_process_list(&self) {
-        let mut output = String::from("  PID | PPID | Process Name |  Ticks  | Status | Memory Usage\n");
+        let mut output =
+            String::from("  PID | PPID | Process Name |  Ticks  | Status | Memory Usage\n");
 
         for (_, p) in self.processes.read().iter() {
             if p.read().status() != ProgramStatus::Dead {
@@ -235,5 +236,24 @@ impl ProcessManager {
 
     pub fn waitpid(&self, pid: ProcessId) -> isize {
         self.get_proc_exit_code(pid).unwrap_or(-1)
+    }
+
+    pub fn fork(&self) {
+        // FIXME: get current process
+        let proc_id = processor::get_pid();
+        let mut processes_guard = self.processes.write();
+        let proc = processes_guard
+            .get(&proc_id)
+            .expect("failed to find the process in processes table");
+        // FIXME: fork to get child
+        let child = proc.fork();
+        let child_pid = child.pid();
+        // FIXME: add child to process list
+        processes_guard.insert(child_pid, child);
+        // FIXME: push child to ready queue
+        let mut ready_queue_guard = self.ready_queue.lock();
+        ready_queue_guard.push_back(child_pid);
+        // FOR DBG: maybe print the process ready queue?
+        // debug!("In manager `fork`, the ready queue is :{:#?}",ready_queue_guard);
     }
 }

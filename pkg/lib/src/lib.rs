@@ -5,6 +5,7 @@
 
 #[macro_use]
 pub mod macros;
+pub mod sync;
 
 #[macro_use]
 extern crate syscall_def;

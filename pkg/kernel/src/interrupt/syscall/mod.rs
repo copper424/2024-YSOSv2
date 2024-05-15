@@ -65,6 +65,12 @@ pub fn dispatcher(context: &mut ProcessContext) {
         Syscall::Time => {
             context.set_rax(sys_time() as usize);
         }
+        Syscall::Sem => {
+            sys_sem(&args, context);
+        }
+        Syscall::Fork => {
+            sys_fork(context);
+        }
         // path: &str (ptr: arg0 as *const u8, len: arg1) -> pid: u16
         Syscall::Spawn => {
             context.set_rax(spawn_process(&args));

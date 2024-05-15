@@ -1,11 +1,10 @@
 use alloc::collections::BTreeMap;
-use spin::RwLock;
-use x86_64::structures::paging::{
-    page::PageRange,
-    Page,
-};
+use spin::rwlock::RwLock;
+use x86_64::structures::paging::{page::PageRange, Page};
 
 use crate::resource::StdIO;
+
+use self::sync::SemaphoreSet;
 
 use super::*;
 
@@ -14,6 +13,7 @@ pub struct ProcessData {
     // shared data
     pub(super) env: Arc<RwLock<BTreeMap<String, String>>>,
     pub(super) file_handles: Arc<RwLock<BTreeMap<u8, Resource>>>,
+    pub(super) semaphores: Arc<RwLock<SemaphoreSet>>,
     // process specific data
     pub(super) stack_segment: Option<PageRange>,
     pub(super) code_segment: Option<Vec<PageRange>>,
@@ -32,6 +32,7 @@ impl Default for ProcessData {
         Self {
             env: Arc::new(RwLock::new(BTreeMap::new())),
             file_handles: Arc::new(RwLock::new(file_handles)),
+            semaphores: Arc::new(RwLock::new(SemaphoreSet::default())),
             stack_segment: None,
             code_segment: None,
             stack_pages: 0,

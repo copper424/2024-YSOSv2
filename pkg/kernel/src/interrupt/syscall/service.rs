@@ -123,3 +123,17 @@ pub fn sys_time() -> usize {
             .unwrap();
     datetime.and_utc().timestamp_millis() as usize
 }
+
+pub fn sys_fork(context: &mut ProcessContext){
+    fork(context);
+}
+/// op: `u8`, key: `u32`, val: `usize` -> ret: `any`
+pub fn sys_sem(args: &SyscallArgs, context: &mut ProcessContext) {
+    match args.arg0 {
+        0 => context.set_rax(new_sem(args.arg1 as u32, args.arg2)),
+        1 => context.set_rax(remove_sem(args.arg1 as u32)),
+        2 => sem_signal(args.arg1 as u32, context),
+        3 => sem_wait(args.arg1 as u32, context),
+        _ => context.set_rax(usize::MAX),
+    }
+}

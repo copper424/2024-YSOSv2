@@ -4,8 +4,11 @@ mod frames;
 
 pub mod gdt;
 pub mod user;
+use core::ptr::copy_nonoverlapping;
+
 pub use address::*;
 pub use frames::*;
+use x86_64::structures::paging::{PageSize, Size4KiB};
 
 pub fn init(boot_info: &'static boot::BootInfo) {
     let memory_map = &boot_info.memory_map;
@@ -48,5 +51,21 @@ pub fn humanized_size(size: u64) -> (f64, &'static str) {
         (bytes / (1 << 20) as f64, "MiB")
     } else {
         (bytes / (1 << 30) as f64, "GiB")
+    }
+}
+
+/// Clone a range of memory
+///
+/// - `src_addr`: the address of the source memory
+/// - `dest_addr`: the address of the target memory
+/// - `size`: the count of pages to be cloned
+pub fn clone_range(src_addr: u64, dest_addr: u64, size: usize) {
+    trace!("Clone range: {:#x} -> {:#x}", src_addr, dest_addr);
+    unsafe {
+        copy_nonoverlapping::<u8>(
+            src_addr as *mut u8,
+            dest_addr as *mut u8,
+            size * Size4KiB::SIZE as usize,
+        );
     }
 }

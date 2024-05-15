@@ -5,6 +5,7 @@ mod paging;
 mod pid;
 mod process;
 mod processor;
+mod sync;
 
 use crate::memory::PAGE_SIZE;
 use crate::resource::Resource;
@@ -24,6 +25,8 @@ use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::VirtAddr;
 
 pub use processor::get_pid;
+
+use self::sync::SemaphoreResult;
 // 0xffff_ff00_0000_0000 is the kernel's address space
 pub const STACK_MAX: u64 = 0x0000_4000_0000_0000;
 
@@ -203,5 +206,58 @@ pub fn kill(pid: ProcessId, context: &mut ProcessContext) {
         } else {
             manager.kill(pid, -1);
         }
+    })
+}
+
+pub fn fork(context: &mut ProcessContext) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let manager = get_process_manager();
+        // FIXME: save_current as parent
+        manager.save_current(context);
+        // FIXME: fork to get child
+        manager.fork();
+        // FIXME: switch to next process
+        manager.switch_next(context);
+    })
+}
+
+pub fn new_sem(key: u32, val: usize) -> usize {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let manager = get_process_manager();
+        let ret = manager.current().write().add_sem(key, val);
+        ret as usize
+    })
+}
+
+pub fn remove_sem(key: u32) -> usize {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let manager = get_process_manager();
+        let ret = manager.current().write().remove_sem(key);
+        ret as usize
+    })
+}
+
+pub fn sem_wait(key: u32, context: &mut ProcessContext) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let manager = get_process_manager();
+        let pid = processor::get_pid();
+        let ret = manager.current().write().sem_wait(key, pid);
+        match ret {
+            SemaphoreResult::Ok => context.set_rax(0),
+            SemaphoreResult::NotExist => context.set_rax(1),
+            SemaphoreResult::Block(pid) => {
+                // FIXME: save, block it, then switch to next
+                //        maybe use `save_current` and `switch_next`
+                manager.save_current(context);
+                manager.switch_next(context);
+            }
+            _ => unreachable!(),
+        }
+    })
+}
+
+pub fn sem_signal(key: u32, context: &mut ProcessContext) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let manager = get_process_manager();
     })
 }
