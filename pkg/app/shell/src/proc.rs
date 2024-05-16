@@ -6,6 +6,10 @@ pub fn spawn(line_arr: &Vec<&str>) {
         return;
     }
     let pid = lib::sys_spawn(line_arr[1]);
+    if pid == 0 {
+        println!("failed to spawn process");
+        return;
+    }
     let _exit_code = sys_wait_pid(pid);
     // println!("The exit code of PID {} is {}", pid, _exit_code);
 }

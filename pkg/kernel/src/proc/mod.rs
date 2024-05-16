@@ -245,11 +245,16 @@ pub fn sem_wait(key: u32, context: &mut ProcessContext) {
         match ret {
             SemaphoreResult::Ok => context.set_rax(0),
             SemaphoreResult::NotExist => context.set_rax(1),
-            SemaphoreResult::Block(pid) => {
+            SemaphoreResult::Block(pid0) => {
                 // FIXME: save, block it, then switch to next
                 //        maybe use `save_current` and `switch_next`
-                manager.save_current(context);
-                manager.switch_next(context);
+                if pid0 == pid {
+                    manager.save_current(context);
+                    manager.block_current();
+                    manager.switch_next(context);
+                }else{
+                    manager.block(pid0);
+                }
             }
             _ => unreachable!(),
         }
@@ -259,5 +264,14 @@ pub fn sem_wait(key: u32, context: &mut ProcessContext) {
 pub fn sem_signal(key: u32, context: &mut ProcessContext) {
     x86_64::instructions::interrupts::without_interrupts(|| {
         let manager = get_process_manager();
+        let ret = manager.current().write().sem_signal(key);
+        match ret {
+            SemaphoreResult::Ok => context.set_rax(0),
+            SemaphoreResult::NotExist => context.set_rax(1),
+            SemaphoreResult::WakeUp(pid0) => {
+                manager.wake_up(pid0);
+            }
+            _ => unreachable!(),
+        }
     })
 }

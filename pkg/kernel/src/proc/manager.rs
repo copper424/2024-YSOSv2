@@ -256,4 +256,24 @@ impl ProcessManager {
         // FOR DBG: maybe print the process ready queue?
         // debug!("In manager `fork`, the ready queue is :{:#?}",ready_queue_guard);
     }
+
+    pub fn block_current(&self) {
+        let pid = processor::get_pid();
+        self.block(pid);
+    }
+
+    pub fn block(&self, pid: ProcessId) {
+        if let Some(proc) = self.get_proc(&pid) {
+            let mut proc_guard = proc.write();
+            proc_guard.block();
+        }
+    }
+
+    pub fn wake_up(&self, pid: ProcessId) {
+        if let Some(proc) = self.get_proc(&pid) {
+            let mut proc_guard = proc.write();
+            proc_guard.pause();
+            self.push_ready(pid);
+        }
+    }
 }

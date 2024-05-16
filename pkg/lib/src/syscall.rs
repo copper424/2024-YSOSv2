@@ -111,12 +111,12 @@ pub fn sys_fork() -> u16 {
 
 #[inline(always)]
 pub fn sys_new_sem(key: u32, value: usize) -> bool {
-    syscall!(Syscall::Sem, 0, key as usize, value) == 0
+    syscall!(Syscall::Sem, 0, key as usize, value) != 0
 }
 
 #[inline(always)]
 pub fn sys_remove_sem(key: u32) -> bool {
-    syscall!(Syscall::Sem, 1, key as usize) == 0
+    syscall!(Syscall::Sem, 1, key as usize) != 0
 }
 
 #[inline(always)]

@@ -164,6 +164,10 @@ impl ProcessInner {
         self.status = ProgramStatus::Running;
     }
 
+    pub fn block(&mut self) {
+        self.status = ProgramStatus::Blocked;
+    }
+    
     pub fn exit_code(&self) -> Option<isize> {
         self.exit_code
     }

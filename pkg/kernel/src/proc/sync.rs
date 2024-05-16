@@ -66,7 +66,7 @@ impl Semaphore {
         }
         else{
             // FIXME: else increase the count and return Ok
-            self.count -= 1;
+            self.count += 1;
             SemaphoreResult::Ok
         }
     }
