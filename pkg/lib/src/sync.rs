@@ -36,8 +36,9 @@ impl SpinLock {
 unsafe impl Sync for SpinLock {} // Why? Check reflection question 5
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Semaphore {/* FIXME: record the sem key */
-    key:u32
+pub struct Semaphore {
+    /* FIXME: record the sem key */
+    key: u32,
 }
 
 impl Semaphore {
@@ -52,13 +53,18 @@ impl Semaphore {
 
     /* FIXME: other functions with syscall... */
     #[inline(always)]
-    pub fn wait(key: u32){
-        sys_sem_wait(key);
+    pub fn wait(&self) {
+        sys_sem_wait(self.key);
     }
 
     #[inline(always)]
-    pub fn signal(key: u32){
-        sys_sem_signal(key);
+    pub fn signal(&self) {
+        sys_sem_signal(self.key);
+    }
+
+    #[inline(always)]
+    pub fn destroy(&self) -> bool {
+        sys_remove_sem(self.key)
     }
 }
 
