@@ -11,6 +11,7 @@ static mut COUNTER: isize = 0;
 fn main() -> isize {
     test_without_protection();
     test_with_spin();
+    test_with_spinguard();
     test_semaphores();
     0
 }
@@ -21,7 +22,12 @@ fn do_counter_inc() {
         inc_counter();
     }
 }
-
+fn do_counter_inc_with_spinlock_guard(lock: &sync::SpinLock1<isize>){
+    for _ in 0..100{
+        let mut lock_guard = lock.acquire();
+        *lock_guard += 1;
+    }
+}
 fn do_counter_inc_with_spinlock(lock: &sync::SpinLock) {
     for _ in 0..100 {
         lock.acquire();
@@ -52,7 +58,35 @@ fn inc_counter() {
         COUNTER = val;
     }
 }
+fn test_with_spinguard() {
+    unsafe {
+        COUNTER = 0;
+    }
+    println!("\x1b[32mTest with spinlock_guard...\x1b[0m");
+    let mut pids = [0u16; THREAD_COUNT];
+    static LOCK: sync::SpinLock1<isize> = sync::SpinLock1::new(0);
+    for i in 0..THREAD_COUNT {
+        let pid = sys_fork();
+        if pid == 0 {
+            do_counter_inc_with_spinlock_guard(&LOCK);
+            sys_exit(0);
+        } else {
+            pids[i] = pid; // only parent knows child's pid
+        }
+    }
 
+    let cpid = sys_get_pid();
+    println!("process #{} holds threads: {:?}", cpid, &pids);
+    sys_stat();
+
+    for i in 0..THREAD_COUNT {
+        println!("#{} waiting for #{}...", cpid, pids[i]);
+        sys_wait_pid(pids[i]);
+    }
+    let lock_guard = LOCK.acquire();
+    
+    println!("COUNTER result: {}", *lock_guard);
+}
 fn test_with_spin() {
     unsafe {
         COUNTER = 0;
