@@ -7,7 +7,6 @@ mod regs;
 pub mod func;
 pub mod logger;
 
-use crate::proc::manager::get_process_manager;
 pub use macros::*;
 pub use regs::*;
 pub mod resource;
@@ -53,7 +52,7 @@ __  __      __  _____            ____  _____
 fn wait(pid: ProcessId) {
     loop {
         // FIXME: try to get the status of the process
-        let exit_code = get_process_manager().get_proc_exit_code(pid);
+        let exit_code = crate::proc::get_proc_exit_code(pid);
         // HINT: it's better to use the exit code
 
         if exit_code.is_none() {
