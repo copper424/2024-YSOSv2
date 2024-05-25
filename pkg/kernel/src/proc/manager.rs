@@ -1,7 +1,12 @@
 use super::*;
 
-use alloc::{collections::*, format, sync::Weak};
+use alloc::{
+    collections::*,
+    format,
+    sync::{Arc, Weak},
+};
 use boot::AppListRef;
+use manager::vm::{stack::STACK_INIT_TOP, ProcessVm};
 use spin::{Mutex, RwLock};
 
 pub static PROCESS_MANAGER: spin::Once<ProcessManager> = spin::Once::new();
@@ -112,7 +117,8 @@ impl ProcessManager {
     // ) -> ProcessId {
     //     let kproc = self.get_proc(&KERNEL_PID).unwrap();
     //     let page_table = kproc.read().clone_page_table();
-    //     let proc = Process::new(name, Some(Arc::downgrade(&kproc)), page_table, proc_data);
+    //     let proc_vm = Some(ProcessVm::new(page_table));
+    //     let proc = Process::new(name, Some(Arc::downgrade(&kproc)), proc_vm, proc_data);
 
     //     // alloc stack for the new process base on pid
     //     let stack_top = proc.alloc_init_stack();
@@ -135,15 +141,14 @@ impl ProcessManager {
     pub fn handle_page_fault(&self, addr: VirtAddr, err_code: PageFaultErrorCode) -> bool {
         // FIXME: handle page fault
         let curr_proc = get_process_manager().current();
-        // ignore page fault caused by protection violation
-        if !err_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION) {
-            if curr_proc.read().is_on_stack(addr) {
-                // handle page fault in current process
-                curr_proc.write().proc_page_fault_handler(addr);
-                return true;
-            }
+        if !err_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION)
+            && !err_code.contains(PageFaultErrorCode::CAUSED_BY_WRITE)
+        {
+            return false;
         }
-        false
+        // handle page fault in current process
+        let ret = curr_proc.write().vm_mut().handle_page_fault(addr);
+        ret
     }
 
     pub fn kill(&self, pid: ProcessId, ret: isize) {
@@ -168,6 +173,7 @@ impl ProcessManager {
 
     pub fn print_process_list(&self) {
         let mut output =
+           
             String::from("  PID | PPID | Process Name |  Ticks  | Status | Memory Usage\n");
 
         for (_, p) in self.processes.read().iter() {
@@ -205,7 +211,8 @@ impl ProcessManager {
     ) -> ProcessId {
         let kproc = self.get_proc(&KERNEL_PID).unwrap();
         let page_table = kproc.read().clone_page_table();
-        let proc = Process::new(name, parent, page_table, proc_data);
+        let proc_vm = Some(ProcessVm::new(page_table));
+        let proc = Process::new(name, parent, proc_vm, proc_data);
         let pid = proc.pid();
 
         // FIXME: load elf to process pagetable
@@ -236,6 +243,14 @@ impl ProcessManager {
 
     pub fn waitpid(&self, pid: ProcessId) -> isize {
         self.get_proc_exit_code(pid).unwrap_or(-1)
+    }
+
+    pub fn curr_sys_write(&self, fd: u8, buf: &[u8]) -> isize {
+        self.current().read().sys_write(fd, buf)
+    }
+
+    pub fn curr_sys_read(&self, fd: u8, buf: &mut [u8]) -> isize {
+        self.current().read().sys_read(fd, buf)
     }
 
     pub fn fork(&self) {
