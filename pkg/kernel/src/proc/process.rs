@@ -1,10 +1,9 @@
+use self::vm::ProcessVm;
 
 use super::*;
-use crate::memory::*;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use spin::*;
-use x86_64::structures::paging::*;
 
 #[derive(Clone)]
 pub struct Process {
@@ -20,7 +19,7 @@ pub struct ProcessInner {
     status: ProgramStatus,
     exit_code: Option<isize>,
     context: ProcessContext,
-    page_table: Option<PageTableContext>,
+    proc_vm: Option<ProcessVm>,
     proc_data: Option<ProcessData>,
 }
 
@@ -43,7 +42,7 @@ impl Process {
     pub fn new(
         name: String,
         parent: Option<Weak<Process>>,
-        page_table: PageTableContext,
+        proc_vm: Option<ProcessVm>,
         proc_data: Option<ProcessData>,
     ) -> Arc<Self> {
         let name = name.to_ascii_lowercase();
@@ -59,7 +58,7 @@ impl Process {
             ticks_passed: 0,
             exit_code: None,
             children: Vec::new(),
-            page_table: Some(page_table),
+            proc_vm,
             proc_data: Some(proc_data.unwrap_or_default()),
         };
 
@@ -86,34 +85,7 @@ impl Process {
     }
 
     pub fn alloc_init_stack(&self) -> VirtAddr {
-        // FIXME: alloc init stack base on self pid
-        let offset_per_pid = (self.pid().0 as u64 - 1) * STACK_MAX_SIZE;
-        // [init_stack_low, init_statck_high)
-        let init_stack_high = STACK_MAX - offset_per_pid;
-        let init_stack_low = init_stack_high - STACK_DEF_SIZE;
-
-        let mut process_inner_guard = self.write();
-        let mut page_mapper = process_inner_guard.page_table.as_ref().unwrap().mapper();
-        // debug!("page mapper status:{:#?}", page_mapper);
-
-        let frame_allocator = &mut *get_frame_alloc_for_sure();
-        // only allocate one page for the initial stack
-        match elf::map_range(
-            init_stack_low,
-            STACK_DEF_PAGE,
-            &mut page_mapper,
-            frame_allocator,
-        ) {
-            Ok(res) => {
-                debug!("Allocated initial stack: {:?}", res);
-            }
-            Err(e) => {
-                warn!("Failed to allocate initial stack: {:?}", e);
-            }
-        }
-        process_inner_guard.set_stack(VirtAddr::new(init_stack_low), STACK_DEF_PAGE);
-        let init_stack_top = STACK_INIT_TOP - offset_per_pid;
-        VirtAddr::new(init_stack_top)
+        self.write().vm_mut().init_proc_stack(self.pid)
     }
 }
 
@@ -143,7 +115,7 @@ impl ProcessInner {
     }
 
     pub fn clone_page_table(&self) -> PageTableContext {
-        self.page_table.as_ref().unwrap().clone_l4()
+        self.vm().page_table.clone_l4()
     }
 
     pub fn is_ready(&self) -> bool {
@@ -154,6 +126,13 @@ impl ProcessInner {
     }
     pub fn is_dead(&self) -> bool {
         self.status == ProgramStatus::Dead
+    }
+    pub fn vm(&self) -> &ProcessVm {
+        self.proc_vm.as_ref().unwrap()
+    }
+
+    pub fn vm_mut(&mut self) -> &mut ProcessVm {
+        self.proc_vm.as_mut().unwrap()
     }
     /// Save the process's context
     /// mark the process as ready
@@ -171,7 +150,7 @@ impl ProcessInner {
         // FIXME: restore the process's context
         self.context.restore(context);
         // FIXME: restore the process's page table
-        self.page_table.as_ref().unwrap().load();
+        self.vm().page_table.load();
         self.resume();
     }
 
@@ -185,49 +164,13 @@ impl ProcessInner {
         // FIXME: set status to dead
         self.status = ProgramStatus::Dead;
         // FIXME: take and drop unused resources
-        self.page_table.take();
+        self.proc_vm.take();
         self.proc_data.take();
         self.parent.take();
     }
 
     pub fn init_stack_frame(&mut self, entry: VirtAddr, stack_top: VirtAddr) {
         self.context.init_stack_frame(entry, stack_top);
-    }
-    pub fn proc_page_fault_handler(&mut self, addr: VirtAddr) {
-        let addr_at_page = Page::<Size4KiB>::containing_address(addr);
-        let stack_segment = self
-            .proc_data
-            .as_ref()
-            .unwrap()
-            .stack_segment
-            .as_ref()
-            .unwrap();
-        let start_page = stack_segment.start;
-        let alloc_page_nums = start_page - addr_at_page;
-        let original_page_size = stack_segment.end - start_page;
-
-        let mut page_table_mapper = self
-            .page_table
-            .as_ref()
-            .expect("page table is none")
-            .mapper();
-
-        let frame_allocator = &mut *get_frame_alloc_for_sure();
-        match elf::map_range(
-            addr_at_page.start_address().as_u64(),
-            alloc_page_nums,
-            &mut page_table_mapper,
-            frame_allocator,
-        ) {
-            Ok(res) => {
-                debug!("Allocated stack for page fault exception: {:?}", res);
-            }
-            Err(e) => {
-                warn!("Failed to allocate stack for page fault exception: {:?}", e);
-            }
-        }
-        let size = original_page_size + alloc_page_nums;
-        self.set_stack(addr_at_page.start_address(), size);
     }
 }
 
@@ -271,10 +214,9 @@ impl core::fmt::Debug for Process {
             "children",
             &inner.children.iter().map(|c| c.pid.0).collect::<Vec<u16>>(),
         );
-        f.field("page_table", &inner.page_table);
         f.field("status", &inner.status);
         f.field("context", &inner.context);
-        f.field("stack", &inner.proc_data.as_ref().map(|d| d.stack_segment));
+        f.field("vm", &inner.proc_vm);
         f.finish()
     }
 }

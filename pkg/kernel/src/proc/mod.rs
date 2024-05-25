@@ -1,13 +1,14 @@
 mod context;
 mod data;
-pub mod manager;
+mod manager;
 mod paging;
 mod pid;
 mod process;
 mod processor;
-
-use crate::memory::PAGE_SIZE;
-use manager::*;
+mod vm;
+use crate::proc::vm::ProcessVm;
+use alloc::format;
+pub use manager::*;
 use process::*;
 
 use alloc::string::String;
@@ -18,26 +19,6 @@ pub use pid::ProcessId;
 
 use x86_64::structures::idt::PageFaultErrorCode;
 use x86_64::VirtAddr;
-
-// 0xffff_ff00_0000_0000 is the kernel's address space
-pub const STACK_MAX: u64 = 0x0000_4000_0000_0000;
-
-pub const STACK_MAX_PAGES: u64 = 0x100000;
-pub const STACK_MAX_SIZE: u64 = STACK_MAX_PAGES * PAGE_SIZE;
-pub const STACK_START_MASK: u64 = !(STACK_MAX_SIZE - 1);
-// [bot..0x2000_0000_0000..top..0x3fff_ffff_ffff]
-// init stack
-pub const STACK_DEF_PAGE: u64 = 1;
-pub const STACK_DEF_SIZE: u64 = STACK_DEF_PAGE * PAGE_SIZE;
-pub const STACK_INIT_BOT: u64 = STACK_MAX - STACK_DEF_SIZE;
-pub const STACK_INIT_TOP: u64 = STACK_MAX - 8;
-// [bot..0xffffff0100000000..top..0xffffff01ffffffff]
-// kernel stack
-pub const KSTACK_MAX: u64 = 0xffff_ff02_0000_0000;
-pub const KSTACK_DEF_PAGE: u64 = 512;
-pub const KSTACK_DEF_SIZE: u64 = KSTACK_DEF_PAGE * PAGE_SIZE;
-pub const KSTACK_INIT_BOT: u64 = KSTACK_MAX - KSTACK_DEF_SIZE;
-pub const KSTACK_INIT_TOP: u64 = KSTACK_MAX - 8;
 
 pub const KERNEL_PID: ProcessId = ProcessId(1);
 
@@ -51,17 +32,18 @@ pub enum ProgramStatus {
 
 /// init process manager
 pub fn init() {
-    let mut kproc_data = ProcessData::new();
-
     // FIXME: set the kernel stack
-    kproc_data.set_stack(VirtAddr::new(KSTACK_INIT_BOT), KSTACK_DEF_PAGE);
-    trace!("Init process data: {:#?}", kproc_data);
+    let proc_vm = ProcessVm::new(PageTableContext::new()).init_kernel_vm();
+
+    trace!("Init kernel vm: {:#?}", proc_vm);
+
+    let kproc_data = ProcessData::new();
 
     // kernel process
     let kproc = Process::new(
         String::from("kernel process"),
         None,
-        PageTableContext::new(),
+        Some(proc_vm),
         Some(kproc_data),
     );
     manager::init(kproc);
@@ -118,4 +100,8 @@ pub fn get_proc_exit_code(pid: ProcessId) -> Option<isize> {
     x86_64::instructions::interrupts::without_interrupts(|| {
         get_process_manager().get_proc_exit_code(pid)
     })
+}
+
+pub fn print_current_proc() -> String {
+    format!("{:#?}", get_process_manager().current())
 }

@@ -1,5 +1,6 @@
 use super::*;
 use alloc::{collections::*, format, sync::Arc};
+use manager::vm::ProcessVm;
 use spin::{Mutex, RwLock};
 
 pub static PROCESS_MANAGER: spin::Once<ProcessManager> = spin::Once::new();
@@ -108,7 +109,8 @@ impl ProcessManager {
     ) -> ProcessId {
         let kproc = self.get_proc(&KERNEL_PID).unwrap();
         let page_table = kproc.read().clone_page_table();
-        let proc = Process::new(name, Some(Arc::downgrade(&kproc)), page_table, proc_data);
+        let proc_vm = Some(ProcessVm::new(page_table));
+        let proc = Process::new(name, Some(Arc::downgrade(&kproc)), proc_vm, proc_data);
 
         // alloc stack for the new process base on pid
         let stack_top = proc.alloc_init_stack();
@@ -131,15 +133,14 @@ impl ProcessManager {
     pub fn handle_page_fault(&self, addr: VirtAddr, err_code: PageFaultErrorCode) -> bool {
         // FIXME: handle page fault
         let curr_proc = get_process_manager().current();
-        if !curr_proc.read().is_on_stack(addr)
-            || (!err_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION)
-                && !err_code.contains(PageFaultErrorCode::CAUSED_BY_WRITE))
+        if !err_code.contains(PageFaultErrorCode::PROTECTION_VIOLATION)
+            && !err_code.contains(PageFaultErrorCode::CAUSED_BY_WRITE)
         {
             return false;
         }
         // handle page fault in current process
-        curr_proc.write().proc_page_fault_handler(addr);
-        true
+        let ret = curr_proc.write().vm_mut().handle_page_fault(addr);
+        ret
     }
 
     pub fn kill(&self, pid: ProcessId, ret: isize) {
