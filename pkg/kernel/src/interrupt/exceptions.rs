@@ -1,5 +1,4 @@
 use crate::memory::*;
-use crate::proc::manager::get_process_manager;
 use x86_64::registers::control::Cr2;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use x86_64::VirtAddr;
@@ -57,7 +56,7 @@ pub extern "x86-interrupt" fn double_fault_handler(
     stack_frame: InterruptStackFrame,
     error_code: u64,
 ) -> ! {
-    unsafe{
+    unsafe {
         *(0xffffff00000 as *mut u64) = 1234;
     }
     panic!(
@@ -70,7 +69,10 @@ pub extern "x86-interrupt" fn page_fault_handler(
     stack_frame: InterruptStackFrame,
     err_code: PageFaultErrorCode,
 ) {
-    if !crate::proc::handle_page_fault(Cr2::read().unwrap_or(VirtAddr::new_truncate(0xdeadbeef)), err_code) {
+    if !crate::proc::handle_page_fault(
+        Cr2::read().unwrap_or(VirtAddr::new_truncate(0xdeadbeef)),
+        err_code,
+    ) {
         warn!(
             "EXCEPTION: PAGE FAULT, ERROR_CODE: {:?}\n\nTrying to access: {:#x}\n{:#?}",
             err_code,
@@ -78,7 +80,10 @@ pub extern "x86-interrupt" fn page_fault_handler(
             stack_frame
         );
         // FIXME: print info about which process causes page fault?
-        warn!("Page fault was caused by Process #{}\n", get_process_manager().current().pid());
+        debug!(
+            "Current process Infomation: {}",
+            crate::proc::print_current_proc()
+        );
     }
 }
 pub extern "x86-interrupt" fn general_protection_fault_handler(
