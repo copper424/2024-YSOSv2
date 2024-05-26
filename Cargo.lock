@@ -407,6 +407,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ysos_fish"
+version = "0.1.0"
+dependencies = [
+ "yslib",
+]
+
+[[package]]
 name = "ysos_fork_test"
 version = "0.1.0"
 dependencies = [
