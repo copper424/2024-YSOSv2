@@ -8,7 +8,10 @@ fn main() -> isize {
     for i in 0..CHOPSTICK.len() {
         CHOPSTICK[i].init(1);
     }
+    println!("Scheme 1");
     philosopher(0);
+    println!("Scheme 2");
+    philosopher(1);
     0
 }
 
