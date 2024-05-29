@@ -61,10 +61,9 @@ impl Semaphore {
         // FIXME: if the wait queue is not empty
         //          pop a process from the wait queue
         //          return WakeUp(pid)
-        if let Some(pid) = self.wait_queue.pop_front(){
+        if let Some(pid) = self.wait_queue.pop_front() {
             SemaphoreResult::WakeUp(pid)
-        }
-        else{
+        } else {
             // FIXME: else increase the count and return Ok
             self.count += 1;
             SemaphoreResult::Ok
@@ -105,7 +104,7 @@ impl SemaphoreSet {
         if let Some(sem) = self.sems.get(&sid) {
             let mut sem_guard = sem.lock();
             sem_guard.wait(pid)
-        }else{
+        } else {
             // FIXME: return NotExist if the semaphore is not exist
             SemaphoreResult::NotExist
         }
@@ -117,10 +116,10 @@ impl SemaphoreSet {
 
         // FIXME: try get the semaphore from the sems
         //         then do it's operation
-        if let Some(sem) = self.sems.get(&sid){
+        if let Some(sem) = self.sems.get(&sid) {
             let mut sem_guard = sem.lock();
             sem_guard.signal()
-        }else{
+        } else {
             // FIXME: return NotExist if the semaphore is not exist
             SemaphoreResult::NotExist
         }

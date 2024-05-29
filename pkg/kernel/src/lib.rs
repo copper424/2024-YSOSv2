@@ -26,13 +26,12 @@ pub use utils::*;
 pub mod drivers;
 pub use drivers::*;
 
-pub mod memory;
 pub mod interrupt;
+pub mod memory;
 pub mod proc;
 
 pub use alloc::format;
 use boot::BootInfo;
-
 
 pub fn init(boot_info: &'static BootInfo) {
     serial::init(); // init serial output

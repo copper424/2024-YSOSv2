@@ -50,9 +50,9 @@ pub fn list_process() {
     print_process_list();
 }
 
-pub fn waitpid(args: &SyscallArgs) -> isize {
+pub fn waitpid(args: &SyscallArgs, context: &mut ProcessContext) {
     let pid = ProcessId(args.arg0 as u16);
-    crate::proc::waitpid(pid)
+    crate::proc::waitpid(pid, context);
 }
 
 pub fn sys_allocate(args: &SyscallArgs) -> usize {

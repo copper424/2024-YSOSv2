@@ -10,14 +10,14 @@ static mut M: u64 = 0xdeadbeef;
 
 fn main() -> isize {
     let mut c = 32;
-    let c_ptr = (& c) as *const isize;
-    println!("c address: {:#?}",c_ptr);
+    let c_ptr = (&c) as *const isize;
+    println!("c address: {:#?}", c_ptr);
     let pid = sys_fork();
 
     if pid == 0 {
         println!("I am the child process");
-        let c_ptr = (& c) as *const isize;
-        println!("c address in child: {:#?}",c_ptr);
+        let c_ptr = (&c) as *const isize;
+        println!("c address in child: {:#?}", c_ptr);
         assert_eq!(c, 32);
 
         unsafe {
@@ -29,8 +29,8 @@ fn main() -> isize {
         c += 32;
     } else {
         println!("I am the parent process");
-        let c_ptr = (& c) as *const isize;
-        println!("c address in parent: {:#?}",c_ptr);
+        let c_ptr = (&c) as *const isize;
+        println!("c address in parent: {:#?}", c_ptr);
         sys_stat();
 
         assert_eq!(c, 32);

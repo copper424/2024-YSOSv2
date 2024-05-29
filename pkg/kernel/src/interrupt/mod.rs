@@ -27,7 +27,7 @@ pub fn init() {
     IDT.load();
 
     // FIXME: check and init APIC
-    warn!("XApic support status is :{}",XApic::support() );
+    warn!("XApic support status is :{}", XApic::support());
     if XApic::support() {
         let mut apic0 = unsafe { XApic::new(physical_to_virtual(LAPIC_ADDR)) };
         apic0.cpu_init();

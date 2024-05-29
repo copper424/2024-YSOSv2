@@ -18,7 +18,7 @@ pub extern "x86-interrupt" fn serial_handler(_st: InterruptStackFrame) {
 fn receive() {
     // FIXME: receive character from uart 16550, put it into INPUT_BUFFER
     let mut char_buf = alloc::vec::Vec::new();
-    loop{
+    loop {
         if let Some(byte) = get_serial_for_sure().receive() {
             char_buf.push(byte);
             if let Ok(key) = core::str::from_utf8(&char_buf) {

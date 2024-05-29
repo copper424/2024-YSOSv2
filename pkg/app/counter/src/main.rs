@@ -22,8 +22,8 @@ fn do_counter_inc() {
         inc_counter();
     }
 }
-fn do_counter_inc_with_spinlock_guard(lock: &sync::SpinLock1<isize>){
-    for _ in 0..100{
+fn do_counter_inc_with_spinlock_guard(lock: &sync::SpinLock1<isize>) {
+    for _ in 0..100 {
         let mut lock_guard = lock.acquire();
         *lock_guard += 1;
     }
@@ -36,8 +36,8 @@ fn do_counter_inc_with_spinlock(lock: &sync::SpinLock) {
     }
 }
 
-fn do_counter_inc_with_semaphore(key: u32){
-    for _ in 0..100{
+fn do_counter_inc_with_semaphore(key: u32) {
+    for _ in 0..100 {
         sys_sem_wait(key);
         inc_counter();
         sys_sem_signal(key);
@@ -84,7 +84,7 @@ fn test_with_spinguard() {
         sys_wait_pid(pids[i]);
     }
     let lock_guard = LOCK.acquire();
-    
+
     println!("COUNTER result: {}", *lock_guard);
 }
 fn test_with_spin() {
@@ -123,7 +123,7 @@ fn test_semaphores() {
     println!("\x1b[34mTest with semaphores...\x1b[0m");
     let mut pids = [0u16; THREAD_COUNT];
     let key = 1;
-    if !sys_new_sem(1, 1){
+    if !sys_new_sem(1, 1) {
         println!("Semaphore already exists");
         sys_remove_sem(key);
         sys_new_sem(key, 1);

@@ -29,6 +29,7 @@ pub fn get_process_manager() -> &'static ProcessManager {
 pub struct ProcessManager {
     processes: RwLock<BTreeMap<ProcessId, Arc<Process>>>,
     ready_queue: Mutex<VecDeque<ProcessId>>,
+    wait_queue: Mutex<BTreeMap<ProcessId, BTreeSet<ProcessId>>>,
     app_list: boot::AppListRef<'static>,
 }
 
@@ -36,6 +37,7 @@ impl ProcessManager {
     pub fn new(init: Arc<Process>, boot_info: AppListRef) -> Self {
         let mut processes = BTreeMap::new();
         let ready_queue = VecDeque::new();
+        let wait_queue = BTreeMap::new();
         let pid = init.pid();
 
         trace!("Init {:#?}", init);
@@ -44,6 +46,7 @@ impl ProcessManager {
         Self {
             processes: RwLock::new(processes),
             ready_queue: Mutex::new(ready_queue),
+            wait_queue: Mutex::new(wait_queue),
             app_list: boot_info,
         }
     }
@@ -169,11 +172,16 @@ impl ProcessManager {
         trace!("Kill {:#?}", &proc);
 
         proc.kill(ret);
+
+        if let Some(pids) = self.wait_queue.lock().remove(&pid) {
+            for pid in pids {
+                self.wake_up(pid, Some(ret));
+            }
+        }
     }
 
     pub fn print_process_list(&self) {
         let mut output =
-           
             String::from("  PID | PPID | Process Name |  Ticks  | Status | Memory Usage\n");
 
         for (_, p) in self.processes.read().iter() {
@@ -241,8 +249,10 @@ impl ProcessManager {
         }
     }
 
-    pub fn waitpid(&self, pid: ProcessId) -> isize {
-        self.get_proc_exit_code(pid).unwrap_or(-1)
+    pub fn waitpid(&self, pid: ProcessId) {
+        let mut wait_queue_guard = self.wait_queue.lock();
+        let entry = wait_queue_guard.entry(pid).or_default();
+        entry.insert(processor::get_pid());
     }
 
     pub fn curr_sys_write(&self, fd: u8, buf: &[u8]) -> isize {
@@ -284,10 +294,17 @@ impl ProcessManager {
         }
     }
 
-    pub fn wake_up(&self, pid: ProcessId) {
+    pub fn wake_up(&self, pid: ProcessId, ret: Option<isize>) {
         if let Some(proc) = self.get_proc(&pid) {
             let mut proc_guard = proc.write();
+            // FIXME: set the return value of the process
+            //        like `context.set_rax(ret as usize)`
+            if let Some(ret) = ret {
+                proc_guard.set_rax(ret as usize);
+            }
+            // FIXME: set the process as ready
             proc_guard.pause();
+            // FIXME: push to ready queue
             self.push_ready(pid);
         }
     }

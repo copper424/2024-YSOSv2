@@ -96,7 +96,7 @@ macro_rules! entry_point {
         }
     };
 }
-const APP_LEN:usize = 16;
+const APP_LEN: usize = 16;
 /// App information
 pub struct App<'a> {
     /// The name of app

@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicU16, Ordering};
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProcessId(pub u16);
 
-static ID:AtomicU16 = AtomicU16::new(1);
+static ID: AtomicU16 = AtomicU16::new(1);
 
 impl ProcessId {
     pub fn new() -> Self {

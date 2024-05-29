@@ -106,7 +106,10 @@ impl LocalApic for XApic {
             const BCAST_INIT: u32 = 1 << 19;
             const INIT_DE_ASSERT_MODE: u32 = 5 << 8;
             const TRIG_MODE_LEVEL: u32 = 1 << 15;
-            self.write(ApicReg::ICR_0.bits(), BCAST_INIT | INIT_DE_ASSERT_MODE | TRIG_MODE_LEVEL);
+            self.write(
+                ApicReg::ICR_0.bits(),
+                BCAST_INIT | INIT_DE_ASSERT_MODE | TRIG_MODE_LEVEL,
+            );
             const DS: u32 = 1 << 12;
             while self.read(ApicReg::ICR_0.bits()) & DS != 0 {}
 
