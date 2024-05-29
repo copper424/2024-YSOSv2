@@ -1,3 +1,4 @@
+use core::hint;
 use core::{
     cell::UnsafeCell,
     hint::spin_loop,
@@ -5,7 +6,6 @@ use core::{
     result::Result,
     sync::atomic::{AtomicBool, Ordering},
 };
-use core::hint;
 
 use crate::*;
 
@@ -86,7 +86,7 @@ pub struct SpinLock1Guard<'a, T: ?Sized + 'a> {
     data: *mut T,
 }
 
-impl<'a, T:?Sized> Deref for SpinLock1Guard<'a, T> {
+impl<'a, T: ?Sized> Deref for SpinLock1Guard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -94,7 +94,7 @@ impl<'a, T:?Sized> Deref for SpinLock1Guard<'a, T> {
     }
 }
 
-impl<'a, T:?Sized> DerefMut for SpinLock1Guard<'a, T> {
+impl<'a, T: ?Sized> DerefMut for SpinLock1Guard<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *self.data }
     }

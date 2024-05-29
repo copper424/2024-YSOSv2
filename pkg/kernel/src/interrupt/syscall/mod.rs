@@ -81,7 +81,7 @@ pub fn dispatcher(context: &mut ProcessContext) {
         }
         // pid: arg0 as u16 -> status: isize
         Syscall::WaitPid => {
-            context.set_rax(service::waitpid(&args) as usize);
+            service::waitpid(&args, context);
         }
         // pid: arg0 as u16
         Syscall::Kill => {

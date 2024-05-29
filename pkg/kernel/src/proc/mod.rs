@@ -5,7 +5,8 @@ mod paging;
 mod pid;
 mod process;
 mod processor;
-mod vm;mod sync;
+mod sync;
+mod vm;
 
 use crate::proc::vm::ProcessVm;
 pub use crate::resource::Resource;
@@ -174,8 +175,18 @@ pub fn still_alive(pid: ProcessId) -> bool {
     })
 }
 
-pub fn waitpid(pid: ProcessId) -> isize {
-    x86_64::instructions::interrupts::without_interrupts(|| get_process_manager().waitpid(pid))
+pub fn waitpid(pid: ProcessId, context: &mut ProcessContext) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        let manager = get_process_manager();
+        if let Some(ret) = manager.get_proc_exit_code(pid) {
+            context.set_rax(ret as usize);
+        } else {
+            manager.waitpid(pid);
+            manager.save_current(context);
+            manager.current().write().block();
+            manager.switch_next(context);
+        }
+    })
 }
 
 pub fn kill(pid: ProcessId, context: &mut ProcessContext) {
@@ -245,7 +256,7 @@ pub fn sem_wait(key: u32, context: &mut ProcessContext) {
                     manager.save_current(context);
                     manager.block_current();
                     manager.switch_next(context);
-                }else{
+                } else {
                     manager.block(pid0);
                 }
             }
@@ -262,7 +273,7 @@ pub fn sem_signal(key: u32, context: &mut ProcessContext) {
             SemaphoreResult::Ok => context.set_rax(0),
             SemaphoreResult::NotExist => context.set_rax(1),
             SemaphoreResult::WakeUp(pid0) => {
-                manager.wake_up(pid0);
+                manager.wake_up(pid0, None);
             }
             _ => unreachable!(),
         }

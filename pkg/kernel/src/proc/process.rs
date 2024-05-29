@@ -144,6 +144,10 @@ impl ProcessInner {
         self.exit_code
     }
 
+    pub fn set_rax(&mut self, value: usize) {
+        self.context.set_rax(value);
+    }
+
     pub fn clone_page_table(&self) -> PageTableContext {
         self.vm().page_table.clone_l4()
     }
