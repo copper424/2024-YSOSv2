@@ -98,6 +98,8 @@ impl core::fmt::Debug for ProcessContextValue {
         f.field("stack_top", &self.stack_frame.stack_pointer);
         f.field("cpu_flags", &self.stack_frame.cpu_flags);
         f.field("instruction_pointer", &self.stack_frame.instruction_pointer);
+        f.field("code_segment", &self.stack_frame.code_segment);
+        f.field("stack_segment", &self.stack_frame.stack_segment);
         f.field("regs", &self.regs);
         f.finish()
     }

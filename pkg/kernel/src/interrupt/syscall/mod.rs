@@ -1,19 +1,11 @@
 use crate::{memory::gdt::SYSCALL_IST_INDEX, proc::*};
-use alloc::format;
 
 use x86_64::{
     structures::idt::{InterruptDescriptorTable, InterruptStackFrame},
     PrivilegeLevel,
 };
 
-// NOTE: import `ysos_syscall` package as `syscall_def` in Cargo.toml
-use syscall_def::Syscall;
-
-mod service;
-
-// FIXME: write syscall service handler in `service.rs`
-use service::*;
-
+use crate::syscall::dispatcher;
 pub unsafe fn register_idt(idt: &mut InterruptDescriptorTable) {
     // FIXME: register syscall handler to IDT
     //        - standalone syscall stack
@@ -31,105 +23,3 @@ pub extern "C" fn syscall(mut context: ProcessContext) {
 }
 
 as_handler!(syscall);
-
-#[derive(Clone, Debug)]
-pub struct SyscallArgs {
-    pub syscall: Syscall,
-    pub arg0: usize,
-    pub arg1: usize,
-    pub arg2: usize,
-}
-
-pub fn dispatcher(context: &mut ProcessContext) {
-    let args = super::syscall::SyscallArgs::new(
-        Syscall::from(context.regs.rax),
-        context.regs.rdi,
-        context.regs.rsi,
-        context.regs.rdx,
-    );
-
-    match args.syscall {
-        // fd: arg0 as u8, buf: &[u8] (ptr: arg1 as *const u8, len: arg2)
-        Syscall::Read => {
-            context.set_rax(sys_read(&args));
-        }
-        // fd: arg0 as u8, buf: &[u8] (ptr: arg1 as *const u8, len: arg2)
-        Syscall::Write => {
-            context.set_rax(sys_write(&args));
-        }
-
-        // None -> pid: u16
-        Syscall::GetPid => {
-            context.set_rax(crate::proc::get_pid().0 as usize);
-        }
-        Syscall::Time => {
-            context.set_rax(sys_time() as usize);
-        }
-        Syscall::Sem => {
-            sys_sem(&args, context);
-        }
-        Syscall::Fork => {
-            sys_fork(context);
-        }
-        // path: &str (ptr: arg0 as *const u8, len: arg1) -> pid: u16
-        Syscall::Spawn => {
-            context.set_rax(spawn_process(&args));
-        }
-        // ret: arg0 as isize
-        Syscall::Exit => {
-            exit_process(&args, context);
-        }
-        // pid: arg0 as u16 -> status: isize
-        Syscall::WaitPid => {
-            service::waitpid(&args, context);
-        }
-        // pid: arg0 as u16
-        Syscall::Kill => {
-            sys_kill(&args, context);
-        }
-
-        // None
-        Syscall::Stat => {
-            list_process();
-        }
-        // None
-        Syscall::ListApp => {
-            list_app();
-        }
-
-        // ----------------------------------------------------
-        // NOTE: following syscall examples are implemented
-        // ----------------------------------------------------
-
-        // layout: arg0 as *const Layout -> ptr: *mut u8
-        Syscall::Allocate => context.set_rax(sys_allocate(&args)),
-        // ptr: arg0 as *mut u8
-        Syscall::Deallocate => sys_deallocate(&args),
-        // Unknown
-        Syscall::Unknown => warn!("Unhandled syscall: {:x?}", context.regs.rax),
-    }
-}
-
-impl SyscallArgs {
-    pub fn new(syscall: Syscall, arg0: usize, arg1: usize, arg2: usize) -> Self {
-        Self {
-            syscall,
-            arg0,
-            arg1,
-            arg2,
-        }
-    }
-}
-
-impl core::fmt::Display for SyscallArgs {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(
-            f,
-            "SYSCALL: {:<10} (0x{:016x}, 0x{:016x}, 0x{:016x})",
-            format!("{:?}", self.syscall),
-            self.arg0,
-            self.arg1,
-            self.arg2
-        )
-    }
-}

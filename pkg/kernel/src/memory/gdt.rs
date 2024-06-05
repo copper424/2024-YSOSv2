@@ -29,6 +29,19 @@ lazy_static! {
             stack_end
         };
 
+        tss.privilege_stack_table[1] = {
+            const STACK_SIZE: usize = IST_SIZES[1];
+            static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
+            let stack_start = VirtAddr::from_ptr(unsafe { STACK.as_ptr() });
+            let stack_end = stack_start + STACK_SIZE as u64;
+            info!(
+                "Privilege Stack for system call : 0x{:016x}-0x{:016x}",
+                stack_start.as_u64(),
+                stack_end.as_u64()
+            );
+            stack_end
+        };
+
         // FIXME: fill tss.interrupt_stack_table with the static stack buffers like above
         // You can use `tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize]`
         tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
@@ -89,8 +102,8 @@ lazy_static! {
         let code_selector = gdt.append(Descriptor::kernel_code_segment());
         let data_selector = gdt.append(Descriptor::kernel_data_segment());
         let tss_selector = gdt.append(Descriptor::tss_segment(&TSS));
-        let user_code_selector = gdt.append(Descriptor::user_code_segment());
         let user_data_selector = gdt.append(Descriptor::user_data_segment());
+        let user_code_selector = gdt.append(Descriptor::user_code_segment());
         (
             gdt,
             KernelSelectors {
@@ -143,6 +156,7 @@ pub fn init() {
     info!("Kernel IST Size  : {:>7.*} {}", 3, size, unit);
 
     info!("GDT Initialized.");
+    info!("GDT:{:#?}", GDT.0);
 }
 
 pub fn get_selector() -> &'static KernelSelectors {
@@ -151,4 +165,8 @@ pub fn get_selector() -> &'static KernelSelectors {
 
 pub fn get_user_selector() -> &'static UserSelectors {
     &GDT.2
+}
+
+pub fn get_syscall_stack() -> VirtAddr {
+    TSS.interrupt_stack_table[1]
 }

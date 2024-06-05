@@ -90,6 +90,10 @@ pub extern "x86-interrupt" fn general_protection_fault_handler(
     stack_frame: InterruptStackFrame,
     err_code: u64,
 ) {
+    warn!(
+        "Current process Infomation: {}",
+        crate::proc::print_current_proc()
+    );
     panic!(
         "EXCEPTION: GENERAL PROTECTION FAULT, ERROR_CODE: 0x{:016x}\n\n{:#?}",
         err_code, stack_frame

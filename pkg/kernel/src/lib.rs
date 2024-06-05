@@ -29,7 +29,7 @@ pub use drivers::*;
 pub mod interrupt;
 pub mod memory;
 pub mod proc;
-
+pub mod syscall;
 pub use alloc::format;
 use boot::BootInfo;
 
@@ -44,7 +44,7 @@ pub fn init(boot_info: &'static BootInfo) {
     memory::user::init(); // init user heap
     proc::init(boot_info);
     utils::uefi_runtime::init(boot_info);
-
+    syscall::init();
     x86_64::instructions::interrupts::enable();
     info!("Interrupts Enabled.");
 
