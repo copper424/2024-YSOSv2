@@ -32,7 +32,7 @@ pub mod proc;
 
 pub use alloc::format;
 use boot::BootInfo;
-
+pub use proc::ProcessPriority;
 pub fn init(boot_info: &'static BootInfo) {
     serial::init(); // init serial output
     logger::init(boot_info); // init logger system

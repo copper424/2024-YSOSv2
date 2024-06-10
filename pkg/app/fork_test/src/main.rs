@@ -29,6 +29,7 @@ fn main() -> isize {
         c += 32;
     } else {
         println!("I am the parent process");
+        println!("Child pid: {}", pid);
         let c_ptr = (&c) as *const isize;
         println!("c address in parent: {:#?}", c_ptr);
         sys_stat();

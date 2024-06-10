@@ -15,6 +15,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use manager::*;
 use process::*;
+pub use process::ProcessPriority;
 pub use processor::get_pid;
 
 use alloc::string::{String, ToString};
@@ -54,6 +55,7 @@ pub fn init(boot_info: &'static boot::BootInfo) {
         None,
         Some(proc_vm),
         Some(kproc_data),
+        ProcessPriority::Kernel as u8,
     );
     let app_list = boot_info.loaded_apps.as_ref();
     manager::init(kproc, app_list);
@@ -137,20 +139,20 @@ pub fn list_app() {
     });
 }
 
-pub fn spawn(name: &str) -> Option<ProcessId> {
+pub fn spawn(name: &str, priority: u8) -> Option<ProcessId> {
     let app = x86_64::instructions::interrupts::without_interrupts(|| {
         let app_list = get_process_manager().get_app_list()?;
         app_list.iter().find(|&app| app.name.eq(name))
     })?;
-    elf_spawn(name.to_string(), &app.elf)
+    elf_spawn(name.to_string(), &app.elf, priority)
 }
 
-pub fn elf_spawn(name: String, elf: &ElfFile) -> Option<ProcessId> {
+pub fn elf_spawn(name: String, elf: &ElfFile, priority: u8) -> Option<ProcessId> {
     let pid = x86_64::instructions::interrupts::without_interrupts(|| {
         let manager = get_process_manager();
         let process_name = name.to_lowercase();
         let parent = Arc::downgrade(&manager.current());
-        let pid = manager.spawn(elf, name, Some(parent), None);
+        let pid = manager.spawn(elf, name, Some(parent), None, priority);
 
         debug!("Spawned process: {}#{}", process_name, pid);
         pid

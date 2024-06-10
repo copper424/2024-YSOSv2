@@ -17,7 +17,7 @@ pub fn spawn_process(args: &SyscallArgs) -> usize {
             args.arg1,
         ))
     };
-    if let Some(pid) = spawn(name) {
+    if let Some(pid) = spawn(name,args.arg2 as u8) {
         return pid.0 as usize;
     }
     0
@@ -39,7 +39,9 @@ pub fn sys_read(args: &SyscallArgs) -> usize {
     let buf = unsafe { core::slice::from_raw_parts_mut(args.arg1 as *mut u8, args.arg2) };
     curr_sys_read(handle_num, buf) as usize
 }
-
+pub fn sched_yield(context: &mut ProcessContext) {
+    crate::proc::switch(context);
+}
 pub fn exit_process(args: &SyscallArgs, context: &mut ProcessContext) {
     // FIXME: exit process with retcode
     crate::proc::exit(args.arg0 as isize, context);

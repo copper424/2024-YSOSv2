@@ -1,11 +1,26 @@
 use lib::{print, println, sys_wait_pid, vec::Vec};
+pub enum ProcessPriority {
+    Kernel,
+    Low = 5,
+    Normal = 10,
+    High = 15,
+}
 
 pub fn spawn(line_arr: &Vec<&str>) {
-    if line_arr.len() != 2 {
+    if line_arr.len() <= 1 {
         println!("cannot find the app name for execution. Usage: exec <app name>");
         return;
     }
-    let pid = lib::sys_spawn(line_arr[1]);
+    let mut priority = ProcessPriority::Normal as u8;
+    if line_arr.len() == 3 {
+        match line_arr[2].parse::<u8>() {
+            Ok(p) => {
+                priority = p;
+            }
+            Err(e) => println!("failed to parse priority:{}", e),
+        }
+    }
+    let pid = lib::sys_spawn(line_arr[1], priority);
     if pid == 0 {
         println!("failed to spawn process");
         return;
@@ -15,11 +30,20 @@ pub fn spawn(line_arr: &Vec<&str>) {
 }
 
 pub fn nohup(line_arr: &Vec<&str>) {
-    if line_arr.len() != 2 {
+    if line_arr.len() <= 1 {
         println!("cannot find the app name for execution. Usage: nohup <app name>");
         return;
     }
-    let _pid = lib::sys_spawn(line_arr[1]);
+    let mut priority = ProcessPriority::Normal as u8;
+    if line_arr.len() == 3 {
+        match line_arr[2].parse::<u8>() {
+            Ok(p) => {
+                priority = p;
+            }
+            Err(e) => println!("failed to parse priority:{}", e),
+        }
+    }
+    let _pid = lib::sys_spawn(line_arr[1], priority);
     // println!("Process {} is running in the background", _pid);
 }
 

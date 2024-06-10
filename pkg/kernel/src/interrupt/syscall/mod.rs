@@ -57,7 +57,9 @@ pub fn dispatcher(context: &mut ProcessContext) {
         Syscall::Write => {
             context.set_rax(sys_write(&args));
         }
-
+        Syscall::SchedYield => {
+            service::sched_yield(context);
+        }
         // None -> pid: u16
         Syscall::GetPid => {
             context.set_rax(crate::proc::get_pid().0 as usize);

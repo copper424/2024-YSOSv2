@@ -1,3 +1,5 @@
+use core::cmp::Reverse;
+
 use super::*;
 
 use alloc::{
@@ -28,7 +30,8 @@ pub fn get_process_manager() -> &'static ProcessManager {
 
 pub struct ProcessManager {
     processes: RwLock<BTreeMap<ProcessId, Arc<Process>>>,
-    ready_queue: Mutex<VecDeque<ProcessId>>,
+    // ready_queue: Mutex<VecDeque<ProcessId>>,
+    ready_queue: Mutex<BTreeMap<Reverse<u8>, VecDeque<ProcessId>>>,
     wait_queue: Mutex<BTreeMap<ProcessId, BTreeSet<ProcessId>>>,
     app_list: boot::AppListRef<'static>,
 }
@@ -36,7 +39,7 @@ pub struct ProcessManager {
 impl ProcessManager {
     pub fn new(init: Arc<Process>, boot_info: AppListRef) -> Self {
         let mut processes = BTreeMap::new();
-        let ready_queue = VecDeque::new();
+        let ready_queue = BTreeMap::new();
         let wait_queue = BTreeMap::new();
         let pid = init.pid();
 
@@ -52,8 +55,10 @@ impl ProcessManager {
     }
 
     #[inline]
-    pub fn push_ready(&self, pid: ProcessId) {
-        self.ready_queue.lock().push_back(pid);
+    pub fn push_ready(&self, pid: ProcessId, priority: u8) {
+        let mut ready_queue_guard = self.ready_queue.lock();
+        let entry = ready_queue_guard.entry(Reverse(priority)).or_default();
+        entry.push_back(pid);
     }
 
     #[inline]
@@ -80,34 +85,59 @@ impl ProcessManager {
         curr_guard.save(context);
         // FIXME: push current process to ready queue if still alive
         if !curr_guard.is_dead() {
-            self.push_ready(curr.pid());
+            self.push_ready(curr.pid(), curr_guard.get_priority());
         }
     }
 
-    pub fn switch_next(&self, context: &mut ProcessContext) -> ProcessId {
-        let mut front_id = processor::get_pid();
-        // FIXME: fetch the next process from ready queue
-        while let Some(front_id1) = self.ready_queue.lock().pop_front() {
-            // extend the lifetime of processes_guard
-            let processes_guard = self.processes.read();
-            let proc1 = processes_guard.get(&front_id1).expect("process not found");
-            // FIXME: check if the next process is ready,
-            //        continue to fetch if not ready
-            if !proc1.read().is_ready() {
-                continue;
-            }
-            // avoid duplicate process in the ready queue
-            if front_id1 != front_id {
-                front_id = front_id1;
-                break;
+    fn update_priority(&self) {
+        let mut ready_queue_guard = self.ready_queue.lock();
+
+        for (priority, queue) in ready_queue_guard.iter_mut() {
+            let old_queue = queue.clone();
+            queue.clear();
+            for pid in old_queue {
+                let proc = self.get_proc(&pid).unwrap();
+                let proc_inner = proc.read();
+                // preserve ready process
+                if proc_inner.is_ready() {
+                    if proc_inner.get_priority() == priority.0 {
+                        queue.push_back(pid);
+                    } else {
+                        self.push_ready(pid, proc_inner.get_priority());
+                    }
+                }
             }
         }
-        let processes_guard = self.processes.read();
-        let proc1 = processes_guard.get(&front_id).expect("process not found");
-        // FIXME: restore next process's context
-        proc1.write().restore(context);
-        // FIXME: update processor's current pid
-        processor::set_pid(front_id);
+
+        ready_queue_guard.retain(|_, queue| !queue.is_empty());
+    }
+
+    fn schedule(&self) -> Option<ProcessId> {
+        self.update_priority();
+        let curr_priority = self.current().read().get_priority();
+        let mut ready_queue_guard = self.ready_queue.lock();
+        if let Some(mut queue) = ready_queue_guard.first_entry() {
+            let priority = queue.key().0;
+            if priority < curr_priority && self.current().read().is_ready() {
+                return None;
+            }
+            let pid = queue.get_mut().pop_front().unwrap();
+            return Some(pid);
+        }
+        None
+    }
+
+    pub fn switch_next(&self, context: &mut ProcessContext) -> ProcessId {
+        let front_id = processor::get_pid();
+        if let Some(next_id) = self.schedule() {
+            let processes_guard = self.processes.read();
+            let next_proc = processes_guard.get(&next_id).expect("process not found");
+            //  FIXME: restore next process's context
+            next_proc.write().restore(context);
+            // FIXME: update processor's current pid
+            processor::set_pid(next_id);
+            return next_id;
+        }
         front_id
         // KERNEL_PID
     }
@@ -173,6 +203,9 @@ impl ProcessManager {
 
         proc.kill(ret);
 
+        for (_, p) in self.ready_queue.lock().iter_mut() {
+            p.retain(|&x| x != pid);
+        }
         if let Some(pids) = self.wait_queue.lock().remove(&pid) {
             for pid in pids {
                 self.wake_up(pid, Some(ret));
@@ -216,11 +249,14 @@ impl ProcessManager {
         name: String,
         parent: Option<Weak<Process>>,
         proc_data: Option<ProcessData>,
+        priority: u8,
     ) -> ProcessId {
         let kproc = self.get_proc(&KERNEL_PID).unwrap();
         let page_table = kproc.read().clone_page_table();
         let proc_vm = Some(ProcessVm::new(page_table));
-        let proc = Process::new(name, parent, proc_vm, proc_data);
+
+        let proc = Process::new(name, parent, proc_vm, proc_data, priority);
+
         let pid = proc.pid();
 
         // FIXME: load elf to process pagetable
@@ -237,7 +273,7 @@ impl ProcessManager {
 
         // FIXME: something like kernel thread
         self.add_proc(pid, proc);
-        self.push_ready(pid);
+        self.push_ready(pid, priority);
         pid
     }
 
@@ -273,11 +309,11 @@ impl ProcessManager {
         // FIXME: fork to get child
         let child = proc.fork();
         let child_pid = child.pid();
+        let priority = child.read().get_priority();
         // FIXME: add child to process list
         processes_guard.insert(child_pid, child);
         // FIXME: push child to ready queue
-        let mut ready_queue_guard = self.ready_queue.lock();
-        ready_queue_guard.push_back(child_pid);
+        self.push_ready(child_pid, priority);
         // FOR DBG: maybe print the process ready queue?
         // debug!("In manager `fork`, the ready queue is :{:#?}",ready_queue_guard);
     }
@@ -304,8 +340,9 @@ impl ProcessManager {
             }
             // FIXME: set the process as ready
             proc_guard.pause();
+            let priority = proc_guard.get_priority();
             // FIXME: push to ready queue
-            self.push_ready(pid);
+            self.push_ready(pid, priority);
         }
     }
 }

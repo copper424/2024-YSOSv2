@@ -20,6 +20,7 @@ pub struct ProcessInner {
     ticks_passed: usize,
     status: ProgramStatus,
     exit_code: Option<isize>,
+    priority: u8,
     context: ProcessContext,
     proc_vm: Option<ProcessVm>,
     proc_data: Option<ProcessData>,
@@ -46,6 +47,7 @@ impl Process {
         parent: Option<Weak<Process>>,
         proc_vm: Option<ProcessVm>,
         proc_data: Option<ProcessData>,
+        priority: u8,
     ) -> Arc<Self> {
         let name = name.to_ascii_lowercase();
 
@@ -59,6 +61,7 @@ impl Process {
             context: ProcessContext::default(),
             ticks_passed: 0,
             exit_code: None,
+            priority,
             children: Vec::new(),
             proc_vm,
             proc_data: Some(proc_data.unwrap_or_default()),
@@ -74,7 +77,7 @@ impl Process {
     }
 
     pub fn kill(&self, ret: isize) {
-        let mut inner = self.inner.write();
+        let mut inner: rwlock::RwLockWriteGuard<ProcessInner, Spin> = self.inner.write();
 
         debug!(
             "Killing process {}#{} with ret code: {}",
@@ -114,6 +117,12 @@ impl Process {
         child
     }
 }
+pub enum ProcessPriority {
+    Kernel,
+    Low = 5,
+    Normal = 10,
+    High = 15,
+}
 
 impl ProcessInner {
     pub fn name(&self) -> &str {
@@ -146,6 +155,14 @@ impl ProcessInner {
 
     pub fn set_rax(&mut self, value: usize) {
         self.context.set_rax(value);
+    }
+
+    pub fn get_priority(&self) -> u8 {
+        self.priority
+    }
+
+    pub fn set_priority(&mut self, priority: u8) {
+        self.priority = priority;
     }
 
     pub fn clone_page_table(&self) -> PageTableContext {
@@ -235,6 +252,7 @@ impl ProcessInner {
             ticks_passed: 0,
             status: ProgramStatus::Ready,
             exit_code: self.exit_code,
+            priority: self.priority,
             context: child_context,
             proc_vm: Some(proc_vm),
             // FIXME: clone the process data struct
@@ -295,6 +313,7 @@ impl core::fmt::Debug for Process {
         f.field("name", &inner.name);
         f.field("parent", &inner.parent().map(|p| p.pid));
         f.field("status", &inner.status);
+        f.field("priority", &inner.priority);
         f.field("ticks_passed", &inner.ticks_passed);
         f.field(
             "children",
@@ -313,7 +332,7 @@ impl core::fmt::Display for Process {
         let (memory_usage, memory_unit) = humanized_size(inner.vm().memory_usage());
         write!(
             f,
-            " #{:-3} | #{:-3} | {:12} | {:7} | {:?} | {:<} {}",
+            " #{:-3} | #{:-3} | {:12} | {:7} | {:?} | {:<} {} | {:3}",
             self.pid.0,
             inner.parent().map(|p| p.pid.0).unwrap_or(0),
             inner.name,
@@ -321,6 +340,7 @@ impl core::fmt::Display for Process {
             inner.status,
             memory_usage,
             memory_unit,
+            inner.priority
         )?;
         Ok(())
     }

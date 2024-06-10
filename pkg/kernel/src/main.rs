@@ -19,5 +19,5 @@ pub fn spawn_init() -> proc::ProcessId {
     // print_serial!("\x1b[1;1H\x1b[2J");
 
     proc::list_app();
-    proc::spawn("shell").unwrap()
+    proc::spawn("shell",crate::ProcessPriority::Normal as u8).unwrap()
 }

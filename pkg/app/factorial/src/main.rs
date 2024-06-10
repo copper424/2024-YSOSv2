@@ -37,7 +37,6 @@ fn main() -> isize {
     // print result
     println!("The factorial of {} under modulo {} is {}.", n, MOD, result);
 
-    sys_wait_pid(1);
     0
 }
 
