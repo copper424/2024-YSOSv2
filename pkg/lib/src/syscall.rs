@@ -92,7 +92,7 @@ pub fn sys_kill(pid: u16) {
 
 #[inline(always)]
 pub fn sys_time() -> usize {
-    syscall!(Syscall::Time) as usize
+    syscall64!(Syscall::Time) as usize
 }
 #[inline(always)]
 pub fn sleep(millisecs: i64) {
@@ -132,7 +132,7 @@ pub fn sys_sem_wait(key: u32) {
 #[inline(always)]
 pub fn sys_brk(addr: Option<usize>) -> Option<usize> {
     const BRK_FAILED: usize = !0;
-    match syscall!(Syscall::Brk, addr.unwrap_or(0)) {
+    match syscall64!(Syscall::Brk, addr.unwrap_or(0)) {
         BRK_FAILED => None,
         ret => Some(ret),
     }

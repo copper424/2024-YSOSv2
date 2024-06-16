@@ -42,8 +42,7 @@ pub enum ProgramStatus {
 /// init process manager
 pub fn init(boot_info: &'static boot::BootInfo) {
     // FIXME: you may need to implement `init_kernel_vm` by yourself
-    let proc_vm = ProcessVm::new(PageTableContext::new())
-        .init_kernel_vm(&boot_info.kernel_pages);
+    let proc_vm = ProcessVm::new(PageTableContext::new()).init_kernel_vm(&boot_info.kernel_pages);
 
     trace!("Init kernel vm: {:#?}", proc_vm);
 
@@ -286,4 +285,8 @@ pub fn brk(addr: Option<VirtAddr>) -> Option<VirtAddr> {
         // NOTE: `brk` does not need to get write lock
         get_process_manager().current().read().brk(addr)
     })
+}
+
+pub fn current_proc_is_kproc() -> bool {
+    get_process_manager().current().pid() == KERNEL_PID
 }

@@ -1,9 +1,11 @@
 pub mod service;
 use crate::memory::gdt;
-use crate::proc::{list_app, ProcessContext};
+use crate::proc::{current_proc_is_kproc, list_app, ProcessContext};
 use alloc::format;
 use service::*;
 use syscall_def::Syscall;
+use x86_64::structures::gdt::SegmentSelector;
+use x86_64::PrivilegeLevel;
 use x86_64::{registers::rflags::RFlags, VirtAddr};
 
 static mut PRIVILEGE_RSP: u64 = 0;
@@ -155,6 +157,19 @@ impl core::fmt::Display for SyscallArgs {
 pub extern "C" fn syscall_handler_inner(mut context: ProcessContext) {
     // x86_64::instructions::interrupts::disable();
     // info!("Syscall context: {:#?}", context);
+    if current_proc_is_kproc() {
+        context.as_mut().as_mut_ptr().update(|mut context| {
+            context.stack_frame.code_segment = SegmentSelector::new(1, PrivilegeLevel::Ring0);
+            context.stack_frame.stack_segment = SegmentSelector::new(2, PrivilegeLevel::Ring0);
+            context
+        });
+    } else {
+        context.as_mut().as_mut_ptr().update(|mut context| {
+            context.stack_frame.code_segment = SegmentSelector::new(6, PrivilegeLevel::Ring3);
+            context.stack_frame.stack_segment = SegmentSelector::new(5, PrivilegeLevel::Ring3);
+            context
+        });
+    }
     dispatcher(&mut context);
     // x86_64::instructions::interrupts::enable();
 }
@@ -166,10 +181,10 @@ pub extern "C" fn syscall_handler() {
             // swapgs
             mov {0}[rip], rsp
             mov rsp, {1}[rip]
-            push 0x2B
+            sub rsp, 0x8
             push {0}[rip]
             push r11
-            push 0x33
+            sub rsp,0x8
             push rcx
             push rbp
             push rax
