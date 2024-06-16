@@ -7,6 +7,7 @@ pub mod user;
 use core::ptr::copy_nonoverlapping;
 
 pub use address::*;
+use alloc::{format, string::String};
 pub use frames::*;
 use x86_64::structures::paging::{PageSize, Size4KiB};
 
@@ -68,4 +69,22 @@ pub fn clone_range(src_addr: u64, dest_addr: u64, size: usize) {
             size * Size4KiB::SIZE as usize,
         );
     }
+}
+
+// A helper function to format memory usage
+pub fn format_usage(name: &str, used: usize, total: usize) -> String {
+    let (used_float, used_unit) = humanized_size(used as u64);
+    let (total_float, total_unit) = humanized_size(total as u64);
+
+    format!(
+        "{:<6} : {:>6.*} {:>3} / {:>6.*} {:>3} ({:>5.2}%)\n",
+        name,
+        2,
+        used_float,
+        used_unit,
+        2,
+        total_float,
+        total_unit,
+        used as f32 / total as f32 * 100.0
+    )
 }

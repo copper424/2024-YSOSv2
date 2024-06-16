@@ -1,3 +1,5 @@
+use crate::memory::{format_usage, get_frame_alloc_for_sure, PAGE_SIZE};
+
 use super::*;
 
 use alloc::{
@@ -191,6 +193,17 @@ impl ProcessManager {
         }
 
         // TODO: print memory usage of kernel heap
+        let alloc = get_frame_alloc_for_sure();
+        let frames_used = alloc.frames_used();
+        let frames_recycled = alloc.frames_recycled();
+        let frames_total = alloc.frames_total();
+
+        let used = (frames_used - frames_recycled) * PAGE_SIZE as usize;
+        let total = frames_total * PAGE_SIZE as usize;
+
+        output += &format_usage("Memory", used, total);
+        
+        drop(alloc);
 
         output += format!("Queue  : {:?}\n", self.ready_queue.lock()).as_str();
 
