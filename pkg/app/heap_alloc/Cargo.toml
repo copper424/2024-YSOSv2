@@ -3,5 +3,8 @@ name = "ysos_heap_alloc"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-lib = { path="../../lib", package="yslib"}
+[dependencies.lib]
+package = "yslib"
+path = "../../lib"
+default-features = false
+features = ["brk_alloc"]

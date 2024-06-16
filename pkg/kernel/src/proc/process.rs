@@ -258,6 +258,10 @@ impl ProcessInner {
     pub fn sem_signal(&self, key: u32) -> SemaphoreResult {
         self.semaphores.read().signal(key)
     }
+
+    pub fn brk(&self, addr: Option<VirtAddr>) -> Option<VirtAddr> {
+        self.vm().brk(addr)
+    }
 }
 
 impl core::ops::Deref for Process {

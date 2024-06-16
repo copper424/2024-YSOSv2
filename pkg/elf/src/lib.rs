@@ -4,7 +4,9 @@
 extern crate log;
 
 use core::ptr::{copy_nonoverlapping, write_bytes};
-
+extern crate alloc;
+use alloc::vec::Vec;
+use page::PageRangeInclusive;
 use x86_64::structures::paging::page::PageRange;
 use x86_64::structures::paging::{mapper::*, *};
 use x86_64::{align_up, PhysAddr, VirtAddr};
@@ -132,40 +134,39 @@ pub fn load_elf(
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
     user_access: bool,
-) -> Result<(), MapToError<Size4KiB>> {
+) -> Result<Vec<PageRangeInclusive>, MapToError<Size4KiB>> {
     let file_buf = elf.input.as_ptr();
 
     info!("Loading ELF file... @ {:#x}", file_buf as u64);
 
-    for segment in elf.program_iter() {
-        if segment.get_type().unwrap() != program::Type::Load {
-            continue;
-        }
-
-        load_segment(
-            file_buf,
-            physical_offset,
-            &segment,
-            page_table,
-            frame_allocator,
-            user_access,
-        )?
-    }
-
-    Ok(())
+    // use iterator and functional programming to load segments
+    // and collect the loaded pages into a vector
+    elf.program_iter()
+        .filter(|segment| segment.get_type().unwrap() == program::Type::Load)
+        .map(|segment| {
+            load_segment(
+                elf,
+                physical_offset,
+                &segment,
+                page_table,
+                frame_allocator,
+                user_access,
+            )
+        })
+        .collect()
 }
 
 /// Load & Map ELF segment
 ///
 /// load segment to new frame and set page table
 fn load_segment(
-    file_buf: *const u8,
+    file_buf: &ElfFile,
     physical_offset: u64,
     segment: &program::ProgramHeader,
     page_table: &mut impl Mapper<Size4KiB>,
     frame_allocator: &mut impl FrameAllocator<Size4KiB>,
     user_access: bool,
-) -> Result<(), MapToError<Size4KiB>> {
+) -> Result<PageRangeInclusive, MapToError<Size4KiB>> {
     trace!("Loading & mapping segment: {:#x?}", segment);
 
     let mem_size = segment.mem_size();
@@ -198,7 +199,7 @@ fn load_segment(
     let end_page = Page::containing_address(virt_start_addr + file_size - 1u64);
     let pages = Page::range_inclusive(start_page, end_page);
 
-    let data = unsafe { file_buf.add(file_offset as usize) };
+    let data = unsafe { file_buf.input.as_ptr().add(file_offset as usize) };
 
     for (idx, page) in pages.enumerate() {
         let frame = frame_allocator
@@ -268,5 +269,8 @@ fn load_segment(
         }
     }
 
-    Ok(())
+    Ok(PageRangeInclusive {
+        start: start_page,
+        end: end_page,
+    })
 }

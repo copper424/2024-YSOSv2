@@ -11,8 +11,8 @@ parser.add_argument('-d', '--debug', action='store_true',
                     help='Enable debug for qemu')
 parser.add_argument('-i', '--intdbg', action='store_true',
                     help='Enable interrupt output for qemu')
-parser.add_argument('-m', '--memory', default='96M',
-                    help='Set memory size for qemu, default is 96M')
+parser.add_argument('-m', '--memory', default='288M',
+                    help='Set memory size for qemu, default is 288M')
 parser.add_argument('-o', '--output', default='-nographic',
                     help='Set output for qemu, default is -nographic')
 parser.add_argument('-p', '--profile', type=str, choices=['release', 'debug'],

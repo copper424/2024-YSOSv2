@@ -1,5 +1,9 @@
 use x86_64::{
-    structures::paging::{mapper::MapToError, page::*, Page},
+    structures::paging::{
+        mapper::{MapToError, UnmapError},
+        page::*,
+        Page,
+    },
     VirtAddr,
 };
 
@@ -30,7 +34,7 @@ const STACK_INIT_TOP_PAGE: Page<Size4KiB> = Page::containing_address(VirtAddr::n
 // kernel stack
 pub const KSTACK_MAX: u64 = 0xffff_ff02_0000_0000;
 pub const KSTACK_DEF_BOT: u64 = KSTACK_MAX - STACK_MAX_SIZE;
-pub const KSTACK_DEF_PAGE: u64 = 512; /* FIXME: decide on the boot config */
+pub const KSTACK_DEF_PAGE: u64 = 8; /* FIXME: decide on the boot config */
 pub const KSTACK_DEF_SIZE: u64 = KSTACK_DEF_PAGE * crate::memory::PAGE_SIZE;
 
 pub const KSTACK_INIT_BOT: u64 = KSTACK_MAX - KSTACK_DEF_SIZE;
@@ -176,6 +180,29 @@ impl Stack {
             },
             self.usage,
         )
+    }
+
+    pub fn clean_up(
+        &mut self,
+        // following types are defined in
+        //   `pkg/kernel/src/proc/vm/mod.rs`
+        mapper: MapperRef,
+        dealloc: FrameAllocatorRef,
+    ) -> Result<(), UnmapError> {
+        if self.usage == 0 {
+            warn!("Stack is empty, no need to clean up.");
+            return Ok(());
+        }
+
+        // FIXME: unmap stack pages with `elf::unmap_pages`
+        let deallocate_flag = processor::get_pid() != KERNEL_PID;
+        let start_addr = self.range.start.start_address().as_u64();
+        if let Err(e) = elf::unmap_range(start_addr, self.usage, mapper, dealloc, deallocate_flag) {
+            debug!("Unmap stack failed: {:?}", e);
+        }
+        self.usage = 0;
+
+        Ok(())
     }
 }
 

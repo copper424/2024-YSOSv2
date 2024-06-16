@@ -94,20 +94,35 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
         return Status::ABORTED;
     }
     // FIXME: map kernel stack
-    if let Err(e) = map_range(
-        config.kernel_stack_address,
-        config.kernel_stack_size,
+    let (stack_start, stack_size) = if config.kernel_stack_auto_grow > 0 {
+        let init_size = config.kernel_stack_auto_grow;
+        let bottom_offset = (config.kernel_stack_size - init_size) * 0x1000;
+        let init_bottom = config.kernel_stack_address + bottom_offset;
+        (init_bottom, init_size)
+    } else {
+        (config.kernel_stack_address, config.kernel_stack_size)
+    };
+    match map_range(
+        stack_start,
+        stack_size,
         &mut page_table,
         &mut frame_allocator,
         false,
     ) {
-        error!("Failed to map kernel stack: {:?}", e);
-        return Status::ABORTED;
+        Ok(range) => info!(
+            "map kernel stack from {:#?} to {:#?}",
+            range.start, range.end
+        ),
+        Err(e) => {
+            error!("Failed to map kernel stack: {:?}", e);
+            return Status::ABORTED;
+        }
     }
     // FIXME: recover write protect (Cr0)
     unsafe {
         Cr0::update(|cr0| cr0.insert(Cr0Flags::WRITE_PROTECT));
     }
+    let kernel_pages = get_page_usage(&elf);
     free_elf(bs, elf);
 
     // 5. Exit boot and jump to ELF entry
@@ -123,6 +138,8 @@ fn efi_main(image: uefi::Handle, mut system_table: SystemTable<Boot>) -> Status 
         system_table: runtime,
         log_level: config.log_level,
         loaded_apps: apps,
+        kernel_pages,
+        kernel_stack_size: config.kernel_stack_size,
     };
 
     // align stack to 8 bytes

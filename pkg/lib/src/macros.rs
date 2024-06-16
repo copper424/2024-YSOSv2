@@ -6,6 +6,7 @@ macro_rules! entry {
     ($fn:ident) => {
         #[export_name = "_start"]
         pub extern "C" fn __impl_start() {
+            lib::init(); // THIS LINE IS NEW IN LAB 7
             let ret = $fn();
             // FIXME: after syscall, add lib::sys_exit(ret);
             crate::sys_exit(ret);

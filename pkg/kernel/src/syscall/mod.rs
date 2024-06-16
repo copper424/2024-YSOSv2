@@ -73,7 +73,9 @@ pub fn dispatcher(context: &mut ProcessContext) {
         Syscall::Write => {
             context.set_rax(sys_write(&args));
         }
-
+        Syscall::Brk => {
+            context.set_rax(sys_brk(&args));
+        }
         // None -> pid: u16
         Syscall::GetPid => {
             context.set_rax(crate::proc::get_pid().0 as usize);
@@ -213,7 +215,7 @@ pub extern "C" fn syscall_handler() {
             sym USER_RSP,
             sym PRIVILEGE_RSP,
             syscall_handler_inner=sym syscall_handler_inner,
-            // without nostack option, the compiler will add `pushq rax` 
+            // without nostack option, the compiler will add `pushq rax`
             // at the front of the assembly block
             options(noreturn,nostack)
         );

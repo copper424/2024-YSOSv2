@@ -9,7 +9,7 @@ pub mod macros;
 pub enum Syscall {
     Read = 0,
     Write = 1,
-
+    Brk = 12,
     GetPid = 39,
     Time = 40,
     Sem = 41,

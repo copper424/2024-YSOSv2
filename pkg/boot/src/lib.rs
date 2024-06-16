@@ -10,11 +10,13 @@ pub use uefi::table::runtime::*;
 pub use uefi::table::Runtime;
 pub use uefi::Status as UefiStatus;
 
+extern crate alloc;
+use alloc::vec::Vec;
 use arrayvec::{ArrayString, ArrayVec};
 use x86_64::registers::control::Cr3;
-use x86_64::structures::paging::{OffsetPageTable, PageTable};
+use x86_64::structures::paging::page::PageRangeInclusive;
+use x86_64::structures::paging::{OffsetPageTable, Page, PageTable};
 use x86_64::VirtAddr;
-
 pub mod allocator;
 pub mod config;
 pub mod fs;
@@ -27,7 +29,7 @@ use xmas_elf::ElfFile;
 extern crate log;
 
 pub type MemoryMap = ArrayVec<MemoryDescriptor, 256>;
-
+pub type KernelPages = Vec<PageRangeInclusive>;
 /// This structure represents the information that the bootloader passes to the kernel.
 pub struct BootInfo {
     /// The memory map
@@ -43,6 +45,11 @@ pub struct BootInfo {
 
     // Loaded apps
     pub loaded_apps: Option<AppList>,
+
+    // Kernel pages
+    pub kernel_pages: KernelPages,
+
+    pub kernel_stack_size:u64,
 }
 
 /// Get current page table from CR3
@@ -108,3 +115,20 @@ pub struct App<'a> {
 pub type AppList = ArrayVec<App<'static>, APP_LEN>;
 
 pub type AppListRef<'a> = Option<&'static ArrayVec<App<'a>, APP_LEN>>;
+
+fn get_page_range(segment: &xmas_elf::program::ProgramHeader) -> PageRangeInclusive {
+    let start = segment.virtual_addr();
+    let end = start + segment.mem_size() - 1;
+
+    PageRangeInclusive {
+        start: Page::containing_address(VirtAddr::new(start)),
+        end: Page::containing_address(VirtAddr::new(end)),
+    }
+}
+
+pub fn get_page_usage(elf: &ElfFile) -> KernelPages {
+    elf.program_iter()
+        .filter(|segment| segment.get_type() == Ok(xmas_elf::program::Type::Load))
+        .map(|segment| get_page_range(&segment))
+        .collect()
+}
