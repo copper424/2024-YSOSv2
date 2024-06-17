@@ -60,3 +60,28 @@ pub fn kill(line_arr: &Vec<&str>) {
         Err(e) => println!("failed to parse PID:{}", e),
     }
 }
+
+pub fn set_priority(line_arr: &Vec<&str>) {
+    if line_arr.len() != 3 {
+        println!("set_priority usage:set_priority <PID> <PRIO>");
+        return;
+    }
+    let pid = line_arr[1].parse::<u16>();
+    let prio = line_arr[2].parse::<u8>();
+    if let (Ok(PID), Ok(PRIO)) = (pid, prio) {
+        lib::sys_set_priority(PID, PRIO);
+    } else {
+        println!("failed to parse PID or priority level");
+    }
+}
+
+pub fn get_priority(line_arr: &Vec<&str>) {
+    if line_arr.len() != 2 {
+        println!("set_priority usage:set_priority <PID> <PRIO>");
+        return;
+    }
+    if let Ok(pid) = line_arr[1].parse::<u16>() {
+        let prio = lib::sys_get_priority(pid);
+        println!("Priority level of PID:{} is {}", pid, prio);
+    }
+}

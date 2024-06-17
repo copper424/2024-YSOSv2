@@ -90,6 +90,14 @@ pub fn dispatcher(context: &mut ProcessContext) {
             sys_kill(&args, context);
         }
 
+        Syscall::GetPriority => {
+            context.set_rax(sys_get_priority(&args) as usize);
+        }
+
+        Syscall::SetPriority => {
+            sys_set_priority(&args);
+        }
+
         // None
         Syscall::Stat => {
             list_process();

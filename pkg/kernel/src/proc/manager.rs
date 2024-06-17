@@ -91,7 +91,7 @@ impl ProcessManager {
 
     fn update_priority(&self) {
         let mut ready_queue_guard = self.ready_queue.lock();
-
+        let mut to_update_proc = Vec::new();
         for (priority, queue) in ready_queue_guard.iter_mut() {
             let old_queue = queue.clone();
             queue.clear();
@@ -103,12 +103,21 @@ impl ProcessManager {
                     if proc_inner.get_priority() == priority.0 {
                         queue.push_back(pid);
                     } else {
-                        self.push_ready(pid, proc_inner.get_priority());
+                        debug!(
+                            "update priority for pid: {:?} from {} to {}",
+                            pid,
+                            priority.0,
+                            proc_inner.get_priority()
+                        );
+                        to_update_proc.push((pid, proc_inner.get_priority()));
                     }
                 }
             }
         }
-
+        for (pid, priority) in to_update_proc {
+            let entry = ready_queue_guard.entry(Reverse(priority)).or_default();
+            entry.push_back(pid);
+        }
         ready_queue_guard.retain(|_, queue| !queue.is_empty());
     }
 
@@ -344,5 +353,30 @@ impl ProcessManager {
             // FIXME: push to ready queue
             self.push_ready(pid, priority);
         }
+    }
+
+    pub fn get_priority(&self, pid: ProcessId) -> u8 {
+        let pid = if pid.0 == 0 {
+            processor::get_pid()
+        } else {
+            pid
+        };
+        let processes_guard = self.processes.read();
+        let proc = processes_guard.get(&pid).expect("cannot find such process");
+        let priority_value = proc.read().get_priority();
+        priority_value
+    }
+
+    pub fn set_priority(&self, pid: ProcessId, priority: u8) {
+        let pid = if pid.0 == 0 {
+            processor::get_pid()
+        } else {
+            pid
+        };
+        let processes_guard = self.processes.read();
+        let proc = processes_guard.get(&pid).expect("cannot find such process");
+        proc.write().set_priority(priority);
+        core::mem::drop(processes_guard);
+        self.update_priority();
     }
 }

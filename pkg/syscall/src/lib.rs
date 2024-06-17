@@ -19,6 +19,8 @@ pub enum Syscall {
     Exit = 60,
     WaitPid = 61,
     Kill = 62,
+    GetPriority = 140,
+    SetPriority = 141,
     ListApp = 65531,
     Stat = 65532,
     Allocate = 65533,

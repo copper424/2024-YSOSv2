@@ -17,7 +17,7 @@ pub fn spawn_process(args: &SyscallArgs) -> usize {
             args.arg1,
         ))
     };
-    if let Some(pid) = spawn(name,args.arg2 as u8) {
+    if let Some(pid) = spawn(name, args.arg2 as u8) {
         return pid.0 as usize;
     }
     0
@@ -128,4 +128,15 @@ pub fn sys_sem(args: &SyscallArgs, context: &mut ProcessContext) {
         3 => sem_wait(args.arg1 as u32, context),
         _ => context.set_rax(usize::MAX),
     }
+}
+
+pub fn sys_get_priority(args: &SyscallArgs) -> u8 {
+    let pid = ProcessId(args.arg0 as u16);
+    get_priority(pid)
+}
+
+pub fn sys_set_priority(args: &SyscallArgs) {
+    let pid = ProcessId(args.arg0 as u16);
+    let priority = args.arg1 as u8;
+    set_priority(pid, priority);
 }

@@ -14,8 +14,8 @@ use alloc::format;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use manager::*;
-use process::*;
 pub use process::ProcessPriority;
+use process::*;
 pub use processor::get_pid;
 
 use alloc::string::{String, ToString};
@@ -279,5 +279,15 @@ pub fn sem_signal(key: u32, context: &mut ProcessContext) {
             }
             _ => unreachable!(),
         }
+    })
+}
+
+pub fn get_priority(pid: ProcessId) -> u8 {
+    x86_64::instructions::interrupts::without_interrupts(|| get_process_manager().get_priority(pid))
+}
+
+pub fn set_priority(pid: ProcessId, priority: u8) {
+    x86_64::instructions::interrupts::without_interrupts(|| {
+        get_process_manager().set_priority(pid, priority);
     })
 }

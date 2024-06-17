@@ -43,6 +43,12 @@ fn main() -> isize {
             "kill" => {
                 proc::kill(&line_arr);
             }
+            "set_priority" => {
+                proc::set_priority(&line_arr);
+            }
+            "get_priority" => {
+                proc::get_priority(&line_arr);
+            }
             s => {
                 if s.is_empty() {
                     print!("\n");

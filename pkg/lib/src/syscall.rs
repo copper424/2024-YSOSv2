@@ -132,3 +132,13 @@ pub fn sys_sem_signal(key: u32) {
 pub fn sys_sem_wait(key: u32) {
     syscall!(Syscall::Sem, 3, key as usize);
 }
+
+#[inline(always)]
+pub fn sys_get_priority(pid: u16) -> u8 {
+    syscall!(Syscall::GetPriority, pid as usize) as u8
+}
+
+#[inline(always)]
+pub fn sys_set_priority(pid: u16, priority: u8) {
+    syscall!(Syscall::SetPriority, pid as usize, priority as usize);
+}
